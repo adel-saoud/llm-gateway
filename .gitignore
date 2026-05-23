@@ -1,0 +1,63 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# uv
+.uv/
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+.coverage
+coverage.xml
+htmlcov/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Local data
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+data/
+
+# Env
+.env
+.env.local
+
+# Runtime team config — contains API keys; copy from teams.example.yaml.
+config/teams.yaml
+
+# Local compose override — copy from docker-compose.override.yml.example
+docker-compose.override.yml
+
+# Editors / AI agents
+.idea/
+.vscode/
+.claude/
+CLAUDE.md
+.playwright-mcp/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker volumes / runtime
+ollama_data/
+prometheus_data/
+grafana_data/
+redis_data/
