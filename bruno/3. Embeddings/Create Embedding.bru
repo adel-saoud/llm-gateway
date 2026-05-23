@@ -1,0 +1,44 @@
+meta {
+  name: Create Embedding
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/v1/embeddings
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{apiKey}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "model": "{{embedModel}}",
+    "input": "noise-cancelling headphones with long battery life under $300"
+  }
+}
+
+docs {
+  Generates a vector embedding for the input string using nomic-embed-text.
+
+  Embedding calls are always classified as `retrieval` — the embedding model
+  signal is the second-highest priority in the classifier (after the explicit
+  header). Cost is recorded under the `retrieval` bucket automatically, no
+  header required.
+
+  Response:
+  - `data[0].embedding` — float array (768 dimensions for nomic-embed-text)
+  - `usage.prompt_tokens` — token count used for cost calculation
+
+  Response headers:
+  - `X-Gateway-Cost-USD`      — cost of this embedding call
+  - `X-Gateway-Model-Used`    — nomic-embed-text
+  - `X-Gateway-Rag-Operation` — retrieval
+}

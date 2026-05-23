@@ -1,0 +1,124 @@
+services:
+  # ── Ollama — local LLM runtime ────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: gateway-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # One-shot init: pulls the three models the gateway needs.
+  # Exits 0 once the models are present — gateway depends on this completing.
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: gateway-ollama-init
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        echo "Pulling models — this is a one-off; cached in the ollama_data volume."
+        ollama pull llama3.2:3b
+        ollama pull qwen2.5:0.5b
+        ollama pull nomic-embed-text
+        echo "Models ready."
+    restart: "no"
+
+  # ── Redis — token bucket rate limiter ─────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: gateway-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ── Prometheus — scrapes the gateway /metrics ─────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: gateway-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=7d"
+
+  # ── Grafana — pre-provisioned dashboards ──────────────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    container_name: gateway-grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+
+  # ── Gateway — the FastAPI app ─────────────────────────────────────────────
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gateway-app
+    restart: unless-stopped
+    depends_on:
+      ollama:
+        condition: service_healthy
+      ollama-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      GATEWAY_HOST: 0.0.0.0
+      GATEWAY_PORT: "8000"
+      GATEWAY_OLLAMA_BASE_URL: http://ollama:11434
+      GATEWAY_REDIS_URL: redis://redis:6379/0
+      GATEWAY_DB_PATH: /app/data/gateway.db
+      GATEWAY_TEAMS_YAML: /app/config/teams.yaml
+      GATEWAY_LOG_LEVEL: INFO
+    volumes:
+      - gateway_data:/app/data
+      # Mounted read-only so operators can edit teams.yaml without rebuilding
+      # the image. config/teams.yaml is gitignored — copy teams.example.yaml.
+      - ./config:/app/config:ro
+
+volumes:
+  ollama_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+  gateway_data:

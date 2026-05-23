@@ -1,0 +1,35 @@
+meta {
+  name: Update Budget Cap
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{baseUrl}}/v1/admin/teams/customer-support
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminApiKey}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "budget": {
+      "daily_usd": 20.0
+    }
+  }
+}
+
+docs {
+  Raises (or lowers) the daily budget cap for the customer-support team.
+
+  Requires admin privilege. The change takes effect immediately for new
+  requests. Check the result with GET /v1/stats (authed as customer-support)
+  or the Teams & Budget Grafana dashboard.
+}

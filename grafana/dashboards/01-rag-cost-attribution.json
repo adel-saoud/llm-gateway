@@ -1,0 +1,214 @@
+{
+  "uid": "rag-cost-attribution",
+  "title": "RAG Cost Attribution",
+  "description": "Where your AI budget actually goes — broken down by pipeline stage, not just model.",
+  "tags": ["llm-gateway", "rag", "cost"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 3,
+  "refresh": "10s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Spend by pipeline stage",
+      "description": "Cumulative cost since the gateway started, split by the four RAG operation types. Hover a slice for the exact dollar amount. Most pipelines are generation-heavy — that is expected and correct.",
+      "type": "piechart",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 6
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "retrieval" },
+            "properties": [{ "id": "displayName", "value": "Retrieval (embedding)" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "reranking" },
+            "properties": [{ "id": "displayName", "value": "Reranking (cross-encoder)" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "generation" },
+            "properties": [{ "id": "displayName", "value": "Generation (answer synthesis)" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "evaluation" },
+            "properties": [{ "id": "displayName", "value": "Evaluation (LLM-as-Judge)" }]
+          }
+        ]
+      },
+      "options": {
+        "displayLabels": ["name"],
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": ["value", "percent"]
+        },
+        "pieType": "donut",
+        "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "targets": [
+        {
+          "expr": "sum by (operation_type) (llm_gateway_rag_cost_usd_total)",
+          "legendFormat": "{{operation_type}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Cumulative spend by stage (this session)",
+      "description": "Running total cost per pipeline stage since the gateway started. Each step up is a request completing. The gap between generation and the others is the core insight this gateway exists to show.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 6,
+          "min": 0,
+          "custom": {
+            "fillOpacity": 15,
+            "lineWidth": 2,
+            "drawStyle": "line",
+            "spanNulls": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "retrieval" },
+            "properties": [{ "id": "displayName", "value": "Retrieval (embedding)" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "reranking" },
+            "properties": [{ "id": "displayName", "value": "Reranking (cross-encoder)" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "generation" },
+            "properties": [{ "id": "displayName", "value": "Generation (answer synthesis)" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "evaluation" },
+            "properties": [{ "id": "displayName", "value": "Evaluation (LLM-as-Judge)" }]
+          }
+        ]
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "values": ["last"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "sum by (operation_type) (llm_gateway_rag_cost_usd_total)",
+          "legendFormat": "{{operation_type}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Cost concentration",
+      "description": "In a healthy RAG pipeline, generation (the LLM synthesising the answer) accounts for 85–99% of total spend — retrieval and reranking are cheap by comparison. Watch this number if you suspect embedding or reranking costs are growing: a sustained drop below 80% is worth investigating.",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 9 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "text", "value": 0 }]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "none",
+        "graphMode": "area",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "expr": "sum(llm_gateway_rag_cost_usd_total{operation_type=\"generation\"}) / clamp_min(sum(llm_gateway_rag_cost_usd_total), 1e-9)",
+          "refId": "A",
+          "legendFormat": "goes to answer synthesis (generation)"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Top spenders by team and stage",
+      "description": "Every team's spend per pipeline stage since the gateway started. Sort by Cost to find which team and stage to optimise first.",
+      "type": "table",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 16, "x": 8, "y": 9 },
+      "fieldConfig": {
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Stage" },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "retrieval":  { "text": "Retrieval — embedding",        "index": 0 },
+                      "reranking":  { "text": "Reranking — cross-encoder",    "index": 1 },
+                      "generation": { "text": "Generation — answer synthesis", "index": 2 },
+                      "evaluation": { "text": "Evaluation — LLM-as-Judge",    "index": 3 }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Cost (USD)" },
+            "properties": [
+              { "id": "unit", "value": "currencyUSD" },
+              { "id": "decimals", "value": 6 },
+              { "id": "custom.width", "value": 120 }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "footer": { "show": false, "reducer": ["sum"], "fields": "" }
+      },
+      "targets": [
+        {
+          "expr": "sum by (team, operation_type) (llm_gateway_rag_cost_usd_total)",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        { "id": "merge" },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true },
+            "renameByName": {
+              "operation_type": "Stage",
+              "team": "Team",
+              "Value": "Cost (USD)"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": { "sort": [{ "field": "Cost (USD)", "desc": true }] }
+        }
+      ]
+    }
+  ]
+}

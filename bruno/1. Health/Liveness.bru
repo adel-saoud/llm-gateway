@@ -1,0 +1,16 @@
+meta {
+  name: Liveness
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/health
+  body: none
+  auth: none
+}
+
+docs {
+  Returns `{"status": "ok"}` whenever the process is up. No auth required.
+  Used by Docker / Kubernetes liveness probes.
+}

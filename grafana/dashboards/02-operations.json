@@ -1,0 +1,139 @@
+{
+  "uid": "operations",
+  "title": "Operations",
+  "description": "Health signals for the gateway itself: circuit-breaker state, error rate, fallback triggers, and end-to-end latency percentiles.",
+  "tags": ["llm-gateway", "operations"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 3,
+  "refresh": "10s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Circuit breaker health",
+      "description": "State per provider / model pair. CLOSED = healthy, requests flow normally. HALF_OPEN = probing after a failure window — one request is let through to test recovery. OPEN = provider skipped, fallback chain active. No data means no model has been called yet.",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "CLOSED",
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "CLOSED",    "color": "green"  } } },
+            { "type": "value", "options": { "1": { "text": "HALF_OPEN", "color": "yellow" } } },
+            { "type": "value", "options": { "2": { "text": "OPEN",      "color": "red"    } } }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": 0 },
+              { "color": "yellow", "value": 1 },
+              { "color": "red",    "value": 2 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "expr": "llm_gateway_circuit_breaker_state",
+          "legendFormat": "{{provider}} / {{model}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "5xx error rate by team",
+      "description": "Provider or internal errors returned to clients, per team, per second (5-min rolling rate). A non-zero line here warrants checking gateway logs.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "noValue": "0",
+          "custom": { "fillOpacity": 10, "lineWidth": 2 }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "sum by (team) (rate(llm_gateway_requests_total{status=~\"5..\"}[5m]))",
+          "legendFormat": "{{team}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Fallback rate — primary to backup model",
+      "description": "How often the router had to skip the preferred model and fall back to the next candidate. A sustained non-zero rate means the primary model is regularly unreachable or tripping the circuit breaker.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 6 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "noValue": "0",
+          "custom": { "fillOpacity": 10, "lineWidth": 2 }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "sum by (from_model, to_model, reason) (rate(llm_gateway_fallback_total[5m]))",
+          "legendFormat": "{{from_model}} → {{to_model}} ({{reason}})",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "End-to-end latency (p50 / p95 / p99)",
+      "description": "Round-trip request duration at the gateway boundary — from the first byte received to the last byte sent. Includes model inference time. p99 spikes during the first call to a cold model are normal; sustained elevation indicates a provider issue.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 9 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "fillOpacity": 10, "lineWidth": 2 }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "values": ["mean", "max"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(llm_gateway_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "p50 (median)",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(llm_gateway_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "p95",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(llm_gateway_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "p99 (tail)",
+          "refId": "C"
+        }
+      ]
+    }
+  ]
+}
