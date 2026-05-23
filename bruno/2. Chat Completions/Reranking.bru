@@ -1,0 +1,49 @@
+meta {
+  name: Reranking
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/v1/chat/completions
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{apiKey}}
+}
+
+headers {
+  Content-Type: application/json
+  X-Rag-Operation: reranking
+}
+
+body:json {
+  {
+    "model": "{{budgetModel}}",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Score the relevance of the passage to the query (1–5)."
+      },
+      {
+        "role": "user",
+        "content": "Query: noise-cancelling headphones under $300\nPassage: Sony WH-1000XM5 — 30-hour battery, top-rated ANC, $299."
+      }
+    ],
+    "max_tokens": 16
+  }
+}
+
+docs {
+  Cross-encoder style reranking call — uses the budget model (qwen2.5:0.5b)
+  to score passage relevance to a query on a 1-5 scale.
+
+  The `X-Rag-Operation: reranking` header is the highest-priority signal in
+  the 5-priority classifier. It overrides any keyword inference, so the cost
+  is always recorded under the `reranking` bucket regardless of prompt content.
+
+  Without the header, the classifier also detects reranking from system prompts
+  containing "rerank" or "relevance".
+}

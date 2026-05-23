@@ -1,0 +1,36 @@
+meta {
+  name: Update Allowed Models
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/v1/admin/teams/customer-support
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminApiKey}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "allowed_models": ["qwen2.5:0.5b", "nomic-embed-text", "llama3.2:3b"]
+  }
+}
+
+docs {
+  Adds llama3.2:3b to the customer-support team's model whitelist.
+
+  By default the customer-support team is restricted to qwen2.5:0.5b and
+  nomic-embed-text (see config/teams.example.yaml). This request grants it
+  access to the high-quality model as well.
+
+  An empty array `[]` means no restriction — all registry models are allowed.
+  Requests for models not in the whitelist receive 403 Forbidden.
+}

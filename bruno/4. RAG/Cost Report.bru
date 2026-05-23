@@ -1,0 +1,42 @@
+meta {
+  name: Cost Report
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/v1/rag/cost-report
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{apiKey}}
+}
+
+docs {
+  Returns today's per-operation cost breakdown for the calling team.
+
+  This is the gateway's differentiating endpoint — it answers "which stage of
+  my RAG pipeline is consuming my budget?" rather than just "which model?".
+
+  Response example:
+  ```json
+  {
+    "team": "product-search",
+    "date": "2026-05-23",
+    "total_cost_usd": 0.847,
+    "by_operation": {
+      "retrieval":  0.12,
+      "reranking":  0.08,
+      "generation": 0.58,
+      "evaluation": 0.067
+    }
+  }
+  ```
+
+  The four named operations are always present (zero-filled if no spend).
+  `unknown` appears only if non-zero spend was recorded with an unrecognised tag.
+
+  Run `make demo` first to populate the ledger with sample data.
+}
