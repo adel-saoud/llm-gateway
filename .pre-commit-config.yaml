@@ -1,0 +1,41 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: mixed-line-ending
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.14
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.409
+    hooks:
+      - id: pyright
+        additional_dependencies:
+          - fastapi>=0.136
+          - pydantic>=2.13
+          - pydantic-settings>=2.14
+          - httpx>=0.28
+          - redis>=7.4
+          - aiosqlite>=0.22
+          - structlog>=25.5
+          - prometheus-client>=0.25
+          - opentelemetry-sdk>=1.42
+          - typer>=0.25
+
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v4.1.0
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]
