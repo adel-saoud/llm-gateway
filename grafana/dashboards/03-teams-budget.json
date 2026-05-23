@@ -1,0 +1,106 @@
+{
+  "uid": "teams-budget",
+  "title": "Teams & Budget",
+  "description": "Per-team daily budget consumption, cumulative spend over 24 hours, and rate-limit pressure. The gateway warns teams at 80% utilisation and blocks at 100%.",
+  "tags": ["llm-gateway", "teams", "budget"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 3,
+  "refresh": "10s",
+  "time": { "from": "now-24h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Daily budget utilisation by team",
+      "description": "Each team's spend as a fraction of their daily USD cap. Green = safe. Yellow = warning sent at 80%. Red = budget exhausted, requests blocked until midnight UTC reset. The gateway enforces this per-request via the cost ledger.",
+      "type": "gauge",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "min": 0,
+          "max": 1.0,
+          "noValue": "0%",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": 0   },
+              { "color": "yellow", "value": 0.8 },
+              { "color": "red",    "value": 1.0 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "showThresholdLabels": true,
+        "showThresholdMarkers": true,
+        "text": { "titleSize": 14, "valueSize": 28 }
+      },
+      "targets": [
+        {
+          "expr": "llm_gateway_budget_utilisation",
+          "legendFormat": "{{team}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Cumulative spend per team (last 24 h)",
+      "description": "Running total cost in USD over the past 24 hours. A flat line means no traffic. A vertical step means a burst of requests. Comparing teams here shows which pipeline is the heaviest consumer.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 6,
+          "min": 0,
+          "softMax": 0.01,
+          "custom": { "fillOpacity": 25, "lineWidth": 2 }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "values": ["last"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "sum by (team) (increase(llm_gateway_cost_usd_total[24h]))",
+          "legendFormat": "{{team}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Rate-limit rejections by team",
+      "description": "Requests rejected with 429 Too Many Requests per second (5-min rolling rate). Each team has an independent Redis token bucket. A sustained non-zero line means the team is consistently hitting their requests-per-minute cap — consider raising the limit or throttling the caller.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 9 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "noValue": "0",
+          "custom": { "fillOpacity": 10, "lineWidth": 2 }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "sum by (team) (rate(llm_gateway_rate_limit_hits_total[5m]))",
+          "legendFormat": "{{team}}",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}
