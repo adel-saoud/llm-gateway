@@ -1,0 +1,33 @@
+meta {
+  name: List Models
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/v1/models
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{apiKey}}
+}
+
+docs {
+  Returns the full model catalogue with simulated cost tiers.
+
+  Response fields per model:
+  - `id`                    — model identifier (e.g. "llama3.2:3b")
+  - `tier`                  — "high_quality", "budget", or "embeddings"
+  - `cost_per_1k_input_usd` — simulated input token price
+  - `cost_per_1k_output_usd`— simulated output token price (0.0 for embed models)
+  - `is_embedding_model`    — true for nomic-embed-text
+
+  Default tiers:
+  | Model           | Tier         | Input/1k  | Output/1k |
+  |-----------------|--------------|-----------|-----------|
+  | llama3.2:3b     | high_quality | $0.003    | $0.015    |
+  | qwen2.5:0.5b    | budget       | $0.0001   | $0.0002   |
+  | nomic-embed-text| embeddings   | $0.0001   | —         |
+}

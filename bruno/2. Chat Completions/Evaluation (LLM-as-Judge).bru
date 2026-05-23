@@ -1,0 +1,49 @@
+meta {
+  name: Evaluation (LLM-as-Judge)
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/v1/chat/completions
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{apiKey}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "model": "{{budgetModel}}",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a judge. Score the answer's accuracy 1–5."
+      },
+      {
+        "role": "user",
+        "content": "Question: Which headphones have the best noise cancellation under $300?\nAnswer: The Sony WH-1000XM5 offers 30-hour battery with top-rated noise cancellation at $299."
+      }
+    ],
+    "max_tokens": 64
+  }
+}
+
+docs {
+  LLM-as-Judge evaluation call — uses the budget model to score a generated
+  answer for quality without the `X-Rag-Operation` header.
+
+  The classifier detects evaluation from the system prompt keywords "judge" and
+  "score", so cost is recorded under the `evaluation` bucket. You can also pass
+  `X-Rag-Operation: evaluation` explicitly to force the tag.
+
+  This pattern is common for nightly quality-drift detection: run a batch of
+  (question, answer) pairs through the judge and alert when the average score
+  drops.
+}

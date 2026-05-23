@@ -1,0 +1,46 @@
+meta {
+  name: Generation (streaming)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/v1/chat/completions
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{apiKey}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "model": "{{qualityModel}}",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Which headphones have the best noise cancellation under $300?"
+      }
+    ],
+    "max_tokens": 128,
+    "stream": true
+  }
+}
+
+docs {
+  Same as Generation but with `"stream": true`.
+
+  The response is a Server-Sent Events (SSE) stream of `data: {...}` chunks,
+  each carrying a partial `delta.content` — identical to the OpenAI streaming
+  format. The stream ends with `data: [DONE]`.
+
+  The gateway's middleware is pure-ASGI so SSE bytes pass through unbuffered —
+  no buffering penalty compared to calling Ollama directly.
+
+  Note: Bruno renders the raw SSE stream in the response pane.
+}
