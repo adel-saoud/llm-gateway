@@ -17,7 +17,7 @@ Production RAG cost breaks down across four operation types — retrieval (embed
 
 Runs end-to-end with **Ollama** — zero API keys, zero cost, no data leaves the host.
 
-> Directly inspired by operating a production RAG system at Decathlon France — serving 25,000+ employees where understanding cost-per-operation was critical to making architecture decisions (cheaper embeddings? smaller reranker? colder cache?). This is that pattern, open-sourced.
+> Directly inspired by operating a production RAG system at Decathlon France — serving 30,000+ employees where understanding cost-per-operation was critical to making architecture decisions (cheaper embeddings? smaller reranker? colder cache?). This is that pattern, open-sourced.
 
 **What you get out of the box:**
 
