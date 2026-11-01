@@ -11,23 +11,23 @@ get {
 }
 
 docs {
-  Prometheus scrape endpoint — returns all metrics in the standard text
+  Prometheus scrape endpoint: returns all metrics in the standard text
   exposition format. No authentication required (Prometheus scrapes it
   from inside the Docker network).
 
   Key metric families:
 
   Standard HTTP:
-  - `llm_gateway_requests_total`          — request count by method, path, status
-  - `llm_gateway_request_duration_seconds` — latency histogram (p50/p95/p99)
-  - `llm_gateway_request_size_bytes`       — request body size histogram
-  - `llm_gateway_response_size_bytes`      — response body size histogram
+  - `llm_gateway_requests_total`          request count by method, path, status
+  - `llm_gateway_request_duration_seconds`: latency histogram (p50/p95/p99)
+  - `llm_gateway_request_size_bytes`       request body size histogram
+  - `llm_gateway_response_size_bytes`      response body size histogram
 
   RAG-specific:
-  - `llm_gateway_rag_cost_usd_total`       — cumulative cost by team + operation
-  - `llm_gateway_budget_utilisation`       — daily budget fraction by team (0–1)
-  - `llm_gateway_circuit_breaker_state`    — CB state gauge (0=CLOSED, 1=OPEN, 2=HALF_OPEN) by provider + model
-  - `llm_gateway_fallback_total`           — fallback event count by from_model + to_model + reason
+  - `llm_gateway_rag_cost_usd_total`       cumulative cost by team + operation
+  - `llm_gateway_budget_utilisation`       daily budget fraction by team (0–1)
+  - `llm_gateway_circuit_breaker_state`    CB state gauge (0=CLOSED, 1=OPEN, 2=HALF_OPEN) by provider + model
+  - `llm_gateway_fallback_total`           fallback event count by from_model + to_model + reason
 
   These metrics power all three Grafana dashboards:
   - http://localhost:3000/d/rag-cost-attribution

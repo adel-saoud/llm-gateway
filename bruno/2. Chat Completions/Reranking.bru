@@ -29,7 +29,7 @@ body:json {
       },
       {
         "role": "user",
-        "content": "Query: noise-cancelling headphones under $300\nPassage: Sony WH-1000XM5 — 30-hour battery, top-rated ANC, $299."
+        "content": "Query: noise-cancelling headphones under $300\nPassage: Sony WH-1000XM5: 30-hour battery, top-rated ANC, $299."
       }
     ],
     "max_tokens": 16
@@ -37,7 +37,7 @@ body:json {
 }
 
 docs {
-  Cross-encoder style reranking call — uses the budget model (qwen2.5:0.5b)
+  Cross-encoder style reranking call: uses the budget model (qwen3.5:0.8b)
   to score passage relevance to a query on a 1-5 scale.
 
   The `X-Rag-Operation: reranking` header is the highest-priority signal in

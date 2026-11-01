@@ -14,7 +14,7 @@ docs {
   Checks that the Ollama backend is reachable. Returns:
 
   - `{"status": "ok", "ollama": true}` when the upstream responds.
-  - `{"status": "degraded", "ollama": false}` when Ollama is down — the gateway
+  - `{"status": "degraded", "ollama": false}` when Ollama is down: the gateway
     itself is still healthy but requests will fail.
 
   Used by readiness probes; a deployment should not receive traffic until this

@@ -1,0 +1,45 @@
+meta {
+  name: Auto routing
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/v1/chat/completions
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{apiKey}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "model": "auto",
+    "messages": [
+      {
+        "role": "user",
+        "content": "What is the capital of France?"
+      }
+    ],
+    "temperature": 0.0
+  }
+}
+
+docs {
+  Lets the configured routing policy pick the model.
+
+  With GATEWAY_ROUTING_POLICY=static (default) "auto" serves the high-quality
+  tier with the budget fallback. With GATEWAY_ROUTING_POLICY=autopilot the
+  llm-cost-autopilot sidecar classifies the prompt and the gateway maps its
+  tier to a model; if autopilot is slow or down, the static policy is used.
+
+  Response headers:
+  - `X-Gateway-Model-Used`      the model that served the request
+  - `X-Gateway-Routing-Reason`  why, e.g. autopilot_simple_stage_1_embedding
+}

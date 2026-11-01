@@ -1,0 +1,35 @@
+meta {
+  name: LLM Gateway
+}
+
+script:pre-request {
+  // The model ids are gateway settings, so read them from GET /v1/models once
+  // instead of keeping a copy here: qualityModel, budgetModel and embedModel
+  // become runtime variables for every request in the collection.
+  if (!bru.getVar("qualityModel")) {
+    const variableByTier = {
+      high_quality: "qualityModel",
+      budget: "budgetModel",
+      embeddings: "embedModel",
+    };
+    await bru.sendRequest(
+      {
+        method: "GET",
+        url: bru.getEnvVar("baseUrl") + "/v1/models",
+        headers: { Authorization: "Bearer " + bru.getEnvVar("apiKey") },
+      },
+      function (err, res) {
+        if (err) {
+          console.error("GET /v1/models failed; is the gateway running?", err);
+          return;
+        }
+        for (const model of res.data.data) {
+          const name = variableByTier[model.tier];
+          if (name && !bru.getVar(name)) {
+            bru.setVar(name, model.id);
+          }
+        }
+      }
+    );
+  }
+}

@@ -26,19 +26,19 @@ body:json {
 }
 
 docs {
-  Generates a vector embedding for the input string using nomic-embed-text.
+  Generates a vector embedding for the input string using qwen3-embedding:0.6b.
 
-  Embedding calls are always classified as `retrieval` — the embedding model
+  Embedding calls are always classified as `retrieval`: the embedding model
   signal is the second-highest priority in the classifier (after the explicit
   header). Cost is recorded under the `retrieval` bucket automatically, no
   header required.
 
   Response:
-  - `data[0].embedding` — float array (768 dimensions for nomic-embed-text)
-  - `usage.prompt_tokens` — token count used for cost calculation
+  - `data[0].embedding`: float array (1024 dimensions for qwen3-embedding:0.6b)
+  - `usage.prompt_tokens`: token count used for cost calculation
 
   Response headers:
-  - `X-Gateway-Cost-USD`      — cost of this embedding call
-  - `X-Gateway-Model-Used`    — nomic-embed-text
-  - `X-Gateway-Rag-Operation` — retrieval
+  - `X-Gateway-Cost-USD`      cost of this embedding call
+  - `X-Gateway-Model-Used`    qwen3-embedding:0.6b
+  - `X-Gateway-Rag-Operation`: retrieval
 }

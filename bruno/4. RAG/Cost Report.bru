@@ -17,7 +17,7 @@ auth:bearer {
 docs {
   Returns today's per-operation cost breakdown for the calling team.
 
-  This is the gateway's differentiating endpoint — it answers "which stage of
+  This is the gateway's differentiating endpoint: it answers "which stage of
   my RAG pipeline is consuming my budget?" rather than just "which model?".
 
   Response example:
@@ -38,5 +38,5 @@ docs {
   The four named operations are always present (zero-filled if no spend).
   `unknown` appears only if non-zero spend was recorded with an unrecognised tag.
 
-  Run `make demo` first to populate the ledger with sample data.
+  Run `uv run python scripts/demo_rag.py` first to populate the ledger with sample data.
 }
