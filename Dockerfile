@@ -1,22 +1,22 @@
 # ── Builder ─────────────────────────────────────────────────────────────────
-FROM python:3.12-slim AS builder
+FROM python:3.14-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy
 
-COPY --from=ghcr.io/astral-sh/uv:0.5 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.13 /uv /uvx /bin/
 
 WORKDIR /app
-COPY pyproject.toml uv.lock* README.md ./
+COPY pyproject.toml uv.lock README.md ./
 COPY src ./src
 
 # Install only runtime deps (no dev)
-RUN uv sync --no-dev --no-editable
+RUN uv sync --locked --no-dev --no-editable
 
 # ── Runtime ─────────────────────────────────────────────────────────────────
-FROM python:3.12-slim AS runtime
+FROM python:3.14-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -30,7 +30,7 @@ WORKDIR /app
 COPY --from=builder --chown=gateway:gateway /app/.venv /app/.venv
 COPY --chown=gateway:gateway src ./src
 
-# Data directory for SQLite — mounted as a volume in docker-compose
+# Data directory for SQLite: mounted as a volume in docker-compose
 RUN mkdir -p /app/data && chown gateway:gateway /app/data
 
 USER gateway
