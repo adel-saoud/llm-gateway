@@ -1,4 +1,4 @@
-"""SQLite-backed persistence — cost ledger, circuit state."""
+"""SQLite-backed persistence: cost ledger, circuit state."""
 
 from __future__ import annotations
 

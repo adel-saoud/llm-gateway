@@ -1,4 +1,4 @@
-"""Pure ASGI middleware — gates each request through the team's token bucket.
+"""Pure ASGI middleware: gates each request through the team's token bucket.
 
 Runs after :class:`~llm_gateway.auth.middleware.AuthMiddleware`, which puts
 the resolved team on ``request.state.team``. Health and metrics paths are
@@ -13,14 +13,12 @@ On rejection: 429 + ``Retry-After`` header (integer seconds, per RFC 9110).
 
 from __future__ import annotations
 
-from collections.abc import Iterable
-
 import structlog
 from starlette.requests import Request
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from llm_gateway._http import send_json_response
-from llm_gateway.auth.middleware import DEFAULT_PUBLIC_PATHS
+from llm_gateway.auth.middleware import is_public_path
 from llm_gateway.auth.models import TeamConfig
 from llm_gateway.ratelimit.token_bucket import TokenBucket
 
@@ -28,29 +26,26 @@ _log = structlog.get_logger(__name__)
 
 
 class RateLimitMiddleware:
-    def __init__(
-        self,
-        app: ASGIApp,
-        *,
-        public_paths: Iterable[str] = DEFAULT_PUBLIC_PATHS,
-    ) -> None:
+    """Reject a team's request with 429 when its token bucket is empty."""
+
+    def __init__(self, app: ASGIApp) -> None:
         self._app = app
-        self._public_paths = tuple(public_paths)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        """Pass public and unauthenticated requests through; otherwise spend one token."""
         if scope["type"] != "http":
             await self._app(scope, receive, send)
             return
 
         request = Request(scope, receive)
-        if self._is_public(request.url.path):
+        if is_public_path(request.url.path):
             await self._app(scope, receive, send)
             return
 
         team: TeamConfig | None = getattr(request.state, "team", None)
         if team is None:
             # Auth middleware should have produced a 401 before us. If it
-            # didn't run, pass through — the route handler will fail closed.
+            # didn't run, pass through: the route handler will fail closed.
             await self._app(scope, receive, send)
             return
 
@@ -82,6 +77,3 @@ class RateLimitMiddleware:
             return
 
         await self._app(scope, receive, send)
-
-    def _is_public(self, path: str) -> bool:
-        return any(path == p or path.startswith(f"{p}/") for p in self._public_paths)
