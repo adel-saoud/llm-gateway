@@ -6,8 +6,10 @@ All notable changes to this project are listed here. The format follows
 
 ## [Unreleased]
 
-Breaking changes below, so the next release is 0.2.0 (minor bump while the
-major version is 0).
+## [0.2.0] - 2026-11-01
+
+Contains breaking changes; while the major version is 0 they bump the minor
+version.
 
 ### Added
 - Startup check on `GATEWAY_*` names: an unknown variable, in the environment or
