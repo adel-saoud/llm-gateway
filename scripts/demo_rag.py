@@ -1,7 +1,7 @@
 """Demo: a full RAG pipeline run with cost attribution.
 
-Walks through the operations a real RAG system performs — retrieval (embedding),
-reranking, generation, and an LLM-as-Judge evaluation — and then prints the
+Walks through the operations a real RAG system performs (retrieval with
+embeddings, reranking, generation, and an LLM-as-Judge evaluation), then prints the
 per-operation cost breakdown the gateway recorded.
 
 Run with the gateway up:
@@ -20,14 +20,15 @@ import textwrap
 from typing import Any
 
 import httpx
+from gateway_models import list_models, models_by_tier
 
 DEFAULT_BASE_URL = "http://localhost:8000"
-DEFAULT_API_KEY = "sk-gw-prod-search-8f3a2c1b"
+DEFAULT_API_KEY = "sk-gw-prod-search-replace-me"
 
 DOCUMENT_CHUNKS = [
-    "Sony WH-1000XM5 — 30-hour battery, noise cancellation, foldable, $299.",
-    "Bose QuietComfort 45 — 24-hour battery, adjustable ANC, lightweight, $279.",
-    "Apple AirPods Pro (2nd gen) — 6-hour battery (30 h with case), Adaptive Transparency, $249.",
+    "Sony WH-1000XM5: 30-hour battery, noise cancellation, foldable, $299.",
+    "Bose QuietComfort 45: 24-hour battery, adjustable ANC, lightweight, $279.",
+    "Apple AirPods Pro (2nd gen): 6-hour battery (30 h with case), Adaptive Transparency, $249.",
 ]
 
 QUERY = "noise-cancelling headphones with long battery life under $300"
@@ -61,22 +62,28 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--base-url", default=DEFAULT_BASE_URL)
     parser.add_argument("--api-key", default=DEFAULT_API_KEY)
     parser.add_argument(
-        "--embedding-model",
-        default="nomic-embed-text",
-        help="Model id for the retrieval step.",
+        "--embedding-model", help="Default: what the gateway serves for this tier (GET /v1/models)."
     )
-    parser.add_argument("--budget-model", default="qwen2.5:0.5b")
-    parser.add_argument("--quality-model", default="llama3.2:3b")
+    parser.add_argument(
+        "--budget-model", help="Default: what the gateway serves for this tier (GET /v1/models)."
+    )
+    parser.add_argument(
+        "--quality-model", help="Default: what the gateway serves for this tier (GET /v1/models)."
+    )
     args = parser.parse_args(argv)
 
     client = httpx.Client(
         base_url=args.base_url,
         headers={"Authorization": f"Bearer {args.api_key}"},
     )
+    tiers = models_by_tier(list_models(client))
+    args.embedding_model = args.embedding_model or tiers["embeddings"]
+    args.budget_model = args.budget_model or tiers["budget"]
+    args.quality_model = args.quality_model or tiers["high_quality"]
 
     print(
         textwrap.dedent(f"""
-        LLM Gateway — RAG demo
+        LLM Gateway: RAG demo
         Base URL:        {args.base_url}
         Embedding model: {args.embedding_model}
         Budget model:    {args.budget_model}
@@ -84,16 +91,16 @@ def main(argv: list[str] | None = None) -> int:
     """).strip()
     )
 
-    # 1. Retrieval — embed the query
+    # 1. Retrieval: embed the query
     _step("1. Retrieval (embedding)")
     _post(client, "/v1/embeddings", {"model": args.embedding_model, "input": QUERY})
 
-    # 2. Retrieval — embed each candidate chunk
-    _step("2. Retrieval — chunk embeddings")
+    # 2. Retrieval: embed each candidate chunk
+    _step("2. Retrieval: chunk embeddings")
     for chunk in DOCUMENT_CHUNKS:
         _post(client, "/v1/embeddings", {"model": args.embedding_model, "input": chunk})
 
-    # 3. Reranking — a cross-encoder style call (small model, signalled via header)
+    # 3. Reranking: a cross-encoder style call (small model, signalled via header)
     _step("3. Reranking")
     _post(
         client,
@@ -115,7 +122,7 @@ def main(argv: list[str] | None = None) -> int:
         **{"X-Rag-Operation": "reranking"},
     )
 
-    # 4. Generation — synthesise the answer with the high-quality model
+    # 4. Generation: synthesise the answer with the high-quality model
     _step("4. Generation")
     _post(
         client,
@@ -136,7 +143,7 @@ def main(argv: list[str] | None = None) -> int:
         },
     )
 
-    # 5. Evaluation — LLM-as-Judge on the answer
+    # 5. Evaluation: LLM-as-Judge on the answer
     _step("5. Evaluation (LLM-as-Judge)")
     _post(
         client,

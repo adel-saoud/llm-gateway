@@ -30,14 +30,15 @@ import time
 from pathlib import Path
 
 import httpx
+from gateway_models import list_models, models_by_tier
 
 DEFAULT_BASE_URL = "http://localhost:8000"
-DEFAULT_API_KEY = "sk-gw-prod-search-8f3a2c1b"
+DEFAULT_API_KEY = "sk-gw-prod-search-replace-me"
 
-# Must exceed cb_min_requests (default 10) so the failure rate is well above the threshold.
+# Must exceed GATEWAY_CIRCUIT_BREAKER_MIN_REQUESTS (default 10) so the circuit can open.
 FAILURE_REQUESTS = 14
 
-# Must match GATEWAY_CB_OPEN_DURATION_S (default 30 s).
+# Must match GATEWAY_CIRCUIT_BREAKER_OPEN_DURATION_S (default 30 s).
 OPEN_DURATION_S = 30
 
 
@@ -75,7 +76,7 @@ def _send_requests(client: httpx.Client, n: int, model: str) -> None:
             )
             print(f"  [{i + 1:>2}] {r.status_code}")
         except httpx.HTTPError as exc:
-            print(f"  [{i + 1:>2}] network error — {exc}")
+            print(f"  [{i + 1:>2}] network error: {exc}")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -90,14 +91,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--quality-model",
-        default="llama3.2:3b",
-        help="High-quality model used to trigger the fallback chain.",
+        help="Model that triggers the fallback chain. Default: the gateway's high_quality tier.",
     )
     parser.add_argument(
         "--open-duration",
         type=int,
         default=OPEN_DURATION_S,
-        help="Seconds to wait for the CB open-duration (match GATEWAY_CB_OPEN_DURATION_S).",
+        help="Seconds to wait for the circuit to half-open (match the gateway setting).",
     )
     args = parser.parse_args(argv)
 
@@ -106,9 +106,10 @@ def main(argv: list[str] | None = None) -> int:
         base_url=args.base_url,
         headers={"Authorization": f"Bearer {args.api_key}"},
     )
+    args.quality_model = args.quality_model or models_by_tier(list_models(client))["high_quality"]
 
     print(
-        f"\nLLM Gateway — resilience demo\n"
+        f"\nLLM Gateway: resilience demo\n"
         f"Base URL:       {args.base_url}\n"
         f"Quality model:  {args.quality_model}\n"
         f"Ollama mode:    {'host (manual)' if args.host_ollama else 'bundled (auto)'}\n"
@@ -120,7 +121,7 @@ def main(argv: list[str] | None = None) -> int:
     # ── 1. Stop Ollama ─────────────────────────────────────────────────────
     _step("1. Stopping Ollama backend")
     if args.host_ollama:
-        print("  Host Ollama detected — please stop it now.")
+        print("  Host Ollama detected: please stop it now.")
         print("  → macOS / Linux: pkill -f 'ollama serve'  or  killall ollama")
         input("  Press Enter when Ollama is stopped…")
     else:
@@ -129,7 +130,7 @@ def main(argv: list[str] | None = None) -> int:
         time.sleep(1)
 
     # ── 2. Send failing requests ────────────────────────────────────────────
-    _step(f"2. Sending {FAILURE_REQUESTS} requests (expect 503s — provider down)")
+    _step(f"2. Sending {FAILURE_REQUESTS} requests (expect 503s: provider down)")
     print(
         f"  Each request tries {args.quality_model} → falls back to budget model → both fail.\n"
         f"  The circuit breaker records each failure."
@@ -138,7 +139,7 @@ def main(argv: list[str] | None = None) -> int:
 
     print(
         f"\n  Circuit breaker is now OPEN for ollama / {args.quality_model}.\n"
-        f"  → Refresh the 'Circuit breaker health' panel — it should show OPEN (red).\n"
+        f"  → Refresh the 'Circuit breaker health' panel: it should show OPEN (red).\n"
         f"  → The 'Fallback rate' panel should show a non-zero rate."
     )
 
@@ -182,10 +183,13 @@ def main(argv: list[str] | None = None) -> int:
         if r.is_success:
             print("  Circuit breaker transitioned: HALF_OPEN → CLOSED ✓")
         else:
-            print("  Request failed — Ollama may not be fully ready yet. Try: make demo")
+            print(
+                "  Request failed: Ollama may not be fully ready yet. "
+                "Try: uv run python scripts/demo_rag.py"
+            )
     except httpx.HTTPError as exc:
-        print(f"  Network error — {exc}")
-        print("  Ollama may not be ready. Try running: make demo")
+        print(f"  Network error: {exc}")
+        print("  Ollama may not be ready. Try running: uv run python scripts/demo_rag.py")
 
     print(
         "\n  → Refresh the Operations dashboard to see the CLOSED (green) state:\n"
