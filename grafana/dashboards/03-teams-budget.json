@@ -79,7 +79,7 @@
     {
       "id": 3,
       "title": "Rate-limit rejections by team",
-      "description": "Requests rejected with 429 Too Many Requests per second (5-min rolling rate). Each team has an independent Redis token bucket. A sustained non-zero line means the team is consistently hitting their requests-per-minute cap — consider raising the limit or throttling the caller.",
+      "description": "Requests rejected with 429 Too Many Requests per second (5-min rolling rate). Each team has an independent Redis token bucket. A sustained non-zero line means the team is consistently hitting their requests-per-minute cap: consider raising the limit or throttling the caller.",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 9, "w": 24, "x": 0, "y": 9 },

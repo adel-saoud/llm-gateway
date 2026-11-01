@@ -22,7 +22,7 @@ def test_health_is_counted_as_unauthenticated(settings: Settings, tmp_path: Path
     with gateway_client_factory(settings, tmp_path) as client:
         client.get("/health")
         body = client.get("/metrics").text
-    # Health is public — no team — counted under "unauthenticated"
+    # Health is public (no team), so it is counted under "unauthenticated"
     assert _count_requests(body, team="unauthenticated", status=200) >= 1
 
 
@@ -44,7 +44,7 @@ def test_authenticated_request_counted_under_team(settings: Settings, tmp_path: 
 
 def test_metrics_endpoint_not_counted_in_requests_total(settings: Settings, tmp_path: Path) -> None:
     with gateway_client_factory(settings, tmp_path) as client:
-        # Hit /metrics multiple times — its own counter must not inflate.
+        # Hit /metrics multiple times: its own counter must not inflate.
         for _ in range(3):
             client.get("/metrics")
         body = client.get("/metrics").text
