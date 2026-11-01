@@ -1,0 +1,49 @@
+meta {
+  name: Cached (bypass)
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/v1/chat/completions
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{apiKey}}
+}
+
+headers {
+  Content-Type: application/json
+  Cache-Control: no-cache
+}
+
+body:json {
+  {
+    "model": "{{budgetModel}}",
+    "messages": [
+      {
+        "role": "user",
+        "content": "What is the return policy?"
+      }
+    ],
+    "temperature": 0.0,
+    "user": "end-user-42"
+  }
+}
+
+docs {
+  Skips the semantic cache for this one request with the standard
+  Cache-Control: no-cache header. Remove the header and send it twice to see
+  X-Gateway-Cache go from miss to hit (needs GATEWAY_CACHE_ENABLED=true and
+  semantic_cache: true on the team).
+
+  The optional OpenAI "user" field is part of the cache partition: one end
+  user's cached answer is never served to another user of the same team.
+
+  Response headers:
+  - `X-Gateway-Cache`             hit | miss | bypass
+  - `X-Gateway-Cache-Similarity`  1.0000 for an exact hit, the cosine for a semantic one
+  - `Server-Timing`               gateway;dur=<ms>, upstream;dur=<ms>
+}

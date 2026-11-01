@@ -1,4 +1,4 @@
-"""Per-operation cost attribution — composes ledger queries into a report.
+"""Per-operation cost attribution: composes ledger queries into a report.
 
 The aggregator is intentionally thin: the SQLite ledger already groups by
 operation type, so this layer's job is to shape the result into a stable API
@@ -17,6 +17,7 @@ from llm_gateway.storage.db import CostLedger
 _KNOWN_OPERATIONS: Final[tuple[RagOperationType, ...]] = tuple(
     op for op in RagOperationType if op is not RagOperationType.UNKNOWN
 )
+"""Operations always present in a report, zero-filled, so clients get a stable shape."""
 
 
 class RagCostAttributor:

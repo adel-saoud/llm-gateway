@@ -1,15 +1,15 @@
-"""Load test — generates the headline cost-savings metric.
+"""Load test: generates the headline cost-savings metric.
 
-Sends N requests with the brief's RAG-realistic mix:
+Sends N requests with a typical RAG mix:
 
 * 50% generation
 * 30% retrieval (embedding)
 * 15% reranking
 * 5%  evaluation
 
-The router uses the budget model (``qwen2.5:0.5b``) for "simple" generation
-work (reranking + evaluation), and the high-quality model (``llama3.2:3b``)
-for actual answer synthesis. Embeddings always use ``nomic-embed-text``.
+The router uses the budget tier for "simple" generation work (reranking +
+evaluation), the high-quality tier for answer synthesis and the embeddings tier
+for retrieval. Model ids and prices come from the gateway (``GET /v1/models``).
 
 At the end it prints:
 
@@ -36,9 +36,10 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 
 import httpx
+from gateway_models import list_models, models_by_tier
 
 DEFAULT_BASE_URL = "http://localhost:8000"
-DEFAULT_API_KEY = "sk-gw-prod-search-8f3a2c1b"
+DEFAULT_API_KEY = "sk-gw-prod-search-replace-me"
 
 # 4 operation buckets summing to 100.
 MIX_PERCENTAGES: dict[str, float] = {
@@ -153,10 +154,10 @@ def _build_request(
         {
             "model": models["budget"],
             "messages": [
-                {"role": "system", "content": "You are a judge — score 1-5."},
+                {"role": "system", "content": "You are a judge: score 1-5."},
                 {
                     "role": "user",
-                    "content": "Answer: Sony WH-1000XM5 — 30 h battery, top-rated ANC, $299.",
+                    "content": "Answer: Sony WH-1000XM5: 30 h battery, top-rated ANC, $299.",
                 },
             ],
             "max_tokens": 16,
@@ -172,25 +173,31 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--requests", type=int, default=1000)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument(
-        "--quality-model", default="llama3.2:3b", help="High-quality (expensive) tier."
+        "--quality-model", help="Default: what the gateway serves for this tier (GET /v1/models)."
     )
-    parser.add_argument("--budget-model", default="qwen2.5:0.5b")
-    parser.add_argument("--embed-model", default="nomic-embed-text")
+    parser.add_argument(
+        "--budget-model", help="Default: what the gateway serves for this tier (GET /v1/models)."
+    )
+    parser.add_argument(
+        "--embed-model", help="Default: what the gateway serves for this tier (GET /v1/models)."
+    )
     args = parser.parse_args(argv)
 
     rng = random.Random(args.seed)
-    models = {
-        "quality": args.quality_model,
-        "budget": args.budget_model,
-        "embed": args.embed_model,
-    }
-
     summary = Summary()
     client = httpx.Client(
         base_url=args.base_url,
         headers={"Authorization": f"Bearer {args.api_key}"},
         timeout=60.0,
     )
+    catalogue = list_models(client)
+    tiers = models_by_tier(catalogue)
+    input_price = {m["id"]: m["cost_per_1k_input_usd"] for m in catalogue}
+    models = {
+        "quality": args.quality_model or tiers["high_quality"],
+        "budget": args.budget_model or tiers["budget"],
+        "embed": args.embed_model or tiers["embeddings"],
+    }
 
     print(f"Sending {args.requests} requests against {args.base_url} …")
     started = time.perf_counter()
@@ -223,9 +230,9 @@ def main(argv: list[str] | None = None) -> int:
     # ── Aggregate ──────────────────────────────────────────────────────────
     actual_cost = sum(r.cost_usd for r in summary.all_results() if r.success)
     # Hypothetical: every chat-style call routed to the high-quality model.
-    # Approximated as 5× the budget-model cost (matching the brief's per-1k prices:
-    # llama3.2:3b is roughly 30× input + 75× output of qwen2.5:0.5b).
-    quality_multiplier = 30.0
+    # Scales each call's cost by the input-price ratio of the two tiers; output
+    # prices usually differ more, so the baseline, and the saving, are on the low side.
+    quality_multiplier = input_price[models["quality"]] / input_price[models["budget"]]
     hypothetical_cost = 0.0
     for r in summary.all_results():
         if r.operation is Operation.RETRIEVAL:

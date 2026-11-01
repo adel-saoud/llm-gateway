@@ -18,11 +18,11 @@ docs {
   Returns the calling team's current budget state and today's spend breakdown.
 
   Response:
-  - `team`                — team identifier
-  - `today_cost_usd`      — total spend since midnight UTC
-  - `budget_utilisation`  — fraction of the daily cap consumed (0.0–1.0+)
-  - `daily_cap_usd`       — the team's configured daily budget ceiling
-  - `by_operation`        — spend per RAG operation type (same as cost-report)
+  - `team`                team identifier
+  - `today_cost_usd`      total spend since midnight UTC
+  - `budget_utilisation`  fraction of the daily cap consumed (0.0–1.0+)
+  - `daily_cap_usd`       the team's configured daily budget ceiling
+  - `by_operation`        spend per RAG operation type (same as cost-report)
 
   Budget states:
   - utilisation < 0.8  → OK, requests pass through

@@ -1,0 +1,21 @@
+# Teams for the overhead benchmark only: limits high enough that rate limiting
+# and budget checks run on every request but never reject one.
+teams:
+  - team_id: bench
+    api_key: sk-bench-no-cache
+    allowed_models: []
+    rate_limits:
+      requests_per_minute: 6000000
+      burst_capacity: 1000000
+    budget:
+      daily_usd: 1000000.0
+
+  - team_id: bench-cache
+    api_key: sk-bench-cache
+    allowed_models: []
+    semantic_cache: true
+    rate_limits:
+      requests_per_minute: 6000000
+      burst_capacity: 1000000
+    budget:
+      daily_usd: 1000000.0

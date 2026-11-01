@@ -1,4 +1,4 @@
-"""Circuit breaker — three-state, SQLite-persisted, per (provider, model)."""
+"""Circuit breaker: three-state, SQLite-persisted, per (provider, model)."""
 
 from __future__ import annotations
 

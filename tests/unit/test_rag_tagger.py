@@ -55,7 +55,7 @@ def test_whitespace_only_header_falls_through() -> None:
 def test_embedding_model_forces_retrieval() -> None:
     result = classify(
         is_embedding_model=True,
-        system_prompts=["judge the answer"],  # ignored — embedding wins
+        system_prompts=["judge the answer"],  # ignored: embedding wins
     )
     assert result is RagOperationType.RETRIEVAL
 

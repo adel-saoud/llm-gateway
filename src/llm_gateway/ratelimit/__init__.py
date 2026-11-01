@@ -1,4 +1,4 @@
-"""Rate limiting — Redis-backed token bucket per team."""
+"""Rate limiting: Redis-backed token bucket per team."""
 
 from __future__ import annotations
 

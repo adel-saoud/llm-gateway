@@ -1,0 +1,54 @@
+name: Benchmark
+
+# Manual only: shared runners are noisy, so this gives anyone a second,
+# standard machine to reproduce the README numbers on, not a CI gate.
+on:
+  workflow_dispatch:
+    inputs:
+      rates:
+        description: "Open-loop request rates (req/s, comma-separated)"
+        default: "100,250,500"
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  overhead:
+    name: Gateway overhead
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          version: "0.13.5"
+          python-version: "3.14"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      # The input goes through an env var, not inline, so it cannot inject shell.
+      - name: Run benchmark
+        env:
+          RATES: ${{ inputs.rates }}
+        run: uv run python scripts/bench_overhead.py --open-loop --rates "$RATES"
+
+      - name: Upload results
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: bench-results
+          path: results/raw/overhead-*.json

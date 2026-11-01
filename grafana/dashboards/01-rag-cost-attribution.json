@@ -1,7 +1,7 @@
 {
   "uid": "rag-cost-attribution",
   "title": "RAG Cost Attribution",
-  "description": "Where your AI budget actually goes — broken down by pipeline stage, not just model.",
+  "description": "Where your AI budget actually goes: broken down by pipeline stage, not just model.",
   "tags": ["llm-gateway", "rag", "cost"],
   "timezone": "browser",
   "schemaVersion": 39,
@@ -12,7 +12,7 @@
     {
       "id": 1,
       "title": "Spend by pipeline stage",
-      "description": "Cumulative cost since the gateway started, split by the four RAG operation types. Hover a slice for the exact dollar amount. Most pipelines are generation-heavy — that is expected and correct.",
+      "description": "Cumulative cost since the gateway started, split by the four RAG operation types. Hover a slice for the exact dollar amount. Most pipelines are generation-heavy: that is expected and correct.",
       "type": "piechart",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 9, "w": 12, "x": 0, "y": 0 },
@@ -112,7 +112,7 @@
     {
       "id": 3,
       "title": "Cost concentration",
-      "description": "In a healthy RAG pipeline, generation (the LLM synthesising the answer) accounts for 85–99% of total spend — retrieval and reranking are cheap by comparison. Watch this number if you suspect embedding or reranking costs are growing: a sustained drop below 80% is worth investigating.",
+      "description": "In a healthy RAG pipeline, generation (the LLM synthesising the answer) accounts for 85–99% of total spend: retrieval and reranking are cheap by comparison. Watch this number if you suspect embedding or reranking costs are growing: a sustained drop below 80% is worth investigating.",
       "type": "stat",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 6, "w": 8, "x": 0, "y": 9 },
@@ -158,10 +158,10 @@
                   {
                     "type": "value",
                     "options": {
-                      "retrieval":  { "text": "Retrieval — embedding",        "index": 0 },
-                      "reranking":  { "text": "Reranking — cross-encoder",    "index": 1 },
-                      "generation": { "text": "Generation — answer synthesis", "index": 2 },
-                      "evaluation": { "text": "Evaluation — LLM-as-Judge",    "index": 3 }
+                      "retrieval":  { "text": "Retrieval: embedding",        "index": 0 },
+                      "reranking":  { "text": "Reranking: cross-encoder",    "index": 1 },
+                      "generation": { "text": "Generation: answer synthesis", "index": 2 },
+                      "evaluation": { "text": "Evaluation: LLM-as-Judge",    "index": 3 }
                     }
                   }
                 ]

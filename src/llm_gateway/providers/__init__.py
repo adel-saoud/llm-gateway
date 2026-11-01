@@ -1,4 +1,4 @@
-"""Provider layer — abstracts the wire contract behind a Protocol."""
+"""Provider layer: abstracts the wire contract behind a Protocol."""
 
 from __future__ import annotations
 

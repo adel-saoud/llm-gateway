@@ -13,10 +13,9 @@ is always over the most recent traffic.
 from __future__ import annotations
 
 from collections import deque
-from typing import TypeAlias
 
-# True = success, False = failure
-_Outcome: TypeAlias = bool
+type _Outcome = bool
+"""``True`` for a success, ``False`` for a failure."""
 
 
 class FailureRateMonitor:
@@ -29,19 +28,23 @@ class FailureRateMonitor:
         self._windows: dict[tuple[str, str], deque[_Outcome]] = {}
 
     def record_success(self, provider_name: str, model_id: str) -> None:
+        """Append a success, evicting the oldest outcome once the window is full."""
         self._window(provider_name, model_id).append(True)
 
     def record_failure(self, provider_name: str, model_id: str) -> None:
+        """Append a failure, evicting the oldest outcome once the window is full."""
         self._window(provider_name, model_id).append(False)
 
     def reset(self, provider_name: str, model_id: str) -> None:
-        """Drop all history for one endpoint — used after a HALF_OPEN → CLOSED transition."""
+        """Drop all history for one endpoint: used after a HALF_OPEN → CLOSED transition."""
         self._windows.pop((provider_name, model_id), None)
 
     def sample_count(self, provider_name: str, model_id: str) -> int:
+        """Outcomes currently in the window, compared against ``min_requests``."""
         return len(self._windows.get((provider_name, model_id), ()))
 
     def failure_rate(self, provider_name: str, model_id: str) -> float:
+        """Share of failures in the window; 0.0 for an endpoint with no history."""
         window = self._windows.get((provider_name, model_id))
         if not window:
             return 0.0
@@ -57,11 +60,9 @@ class FailureRateMonitor:
         min_requests: int,
     ) -> bool:
         """True iff we have enough samples AND failure rate ≥ threshold."""
-        window = self._windows.get((provider_name, model_id))
-        if window is None or len(window) < min_requests:
+        if self.sample_count(provider_name, model_id) < min_requests:
             return False
-        failures = sum(1 for ok in window if not ok)
-        return (failures / len(window)) >= threshold
+        return self.failure_rate(provider_name, model_id) >= threshold
 
     def _window(self, provider_name: str, model_id: str) -> deque[_Outcome]:
         key = (provider_name, model_id)

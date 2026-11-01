@@ -1,13 +1,8 @@
-"""Budget tracker — records cost events to the SQLite ledger.
+"""Budget tracker: records cost events to the SQLite ledger.
 
 Cost is computed from token counts and the per-1k prices in
 :class:`~llm_gateway.providers.registry.ModelConfig`. The tracker is the only
 component that writes to the ledger; the enforcer reads from it.
-
-The operation tag is accepted as either a :class:`RagOperationType` (from the
-classifier) or a string (for callers that haven't been migrated yet); unknown
-string values are normalised to :data:`RagOperationType.UNKNOWN` so the column
-remains within the documented vocabulary.
 """
 
 from __future__ import annotations
@@ -35,20 +30,18 @@ class BudgetTracker:
         *,
         team_id: str,
         model_id: str,
-        operation_type: RagOperationType | str,
+        operation_type: RagOperationType,
         input_tokens: int,
         output_tokens: int,
         request_id: str,
-        ts: datetime | None = None,
     ) -> RagCostEvent:
         """Compute cost, persist, and return the structured event.
 
-        Unknown models are recorded with zero cost — the gateway shouldn't
+        Unknown models are recorded with zero cost: the gateway shouldn't
         crash on misconfiguration, but the structlog event records the miss
         so it shows up in dashboards.
         """
-        when = ts or datetime.now(UTC)
-        op = RagOperationType.from_string(operation_type)
+        recorded_at = datetime.now(UTC)
         cost_usd = 0.0
         if self._registry.has(model_id):
             cost_usd = self._registry.get(model_id).cost_for(input_tokens, output_tokens)
@@ -62,10 +55,10 @@ class BudgetTracker:
 
         await self._ledger.record(
             CostLedgerEntry(
-                ts=when,
+                ts=recorded_at,
                 team_id=team_id,
                 model_id=model_id,
-                operation_type=op.value,
+                operation_type=operation_type.value,
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
                 cost_usd=cost_usd,
@@ -75,18 +68,18 @@ class BudgetTracker:
         event = RagCostEvent(
             team_id=team_id,
             model_id=model_id,
-            operation_type=op,
+            operation_type=operation_type,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             cost_usd=cost_usd,
             request_id=request_id,
-            ts=when,
+            ts=recorded_at,
         )
         _log.info(
             "cost_event",
             team_id=team_id,
             model_id=model_id,
-            operation_type=op.value,
+            operation_type=operation_type.value,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             cost_usd=cost_usd,
@@ -95,4 +88,5 @@ class BudgetTracker:
         return event
 
     async def total_for_today(self, team_id: str) -> float:
+        """The team's spend so far on the current UTC calendar day."""
         return await self._ledger.total_for_day(team_id, day=datetime.now(UTC))

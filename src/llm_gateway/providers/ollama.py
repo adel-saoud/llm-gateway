@@ -3,13 +3,18 @@
 Implements the ``Provider`` Protocol against the Ollama HTTP API. Two endpoints
 are touched:
 
-* ``POST /api/chat`` — non-streaming returns a single JSON body; streaming
+* ``POST /api/chat``: non-streaming returns a single JSON body; streaming
   returns one JSON object per line (NDJSON). The streaming branch yields one
   ``StreamChunk`` per line and a final chunk with ``done=True`` carrying token
   usage so downstream cost attribution stays accurate.
-* ``POST /api/embeddings`` — one vector per call. The newer ``/api/embed``
-  batch endpoint is intentionally not used here; the single-input shape is the
-  one the brief's RAG cost-attribution model is calibrated against.
+* ``POST /api/embed``: one input per call (the gateway's embeddings API takes
+  one string). Unlike the superseded ``/api/embeddings``, it returns
+  ``prompt_eval_count``, so embedding cost uses Ollama's own token count.
+
+The minimum Ollama is :data:`MIN_OLLAMA_VERSION`: the first release whose notes
+document ``/api/embed`` returning ``prompt_eval_count`` (0.3.3 added the count,
+0.3.4 announced the endpoint). An older server fails with a message naming it,
+instead of a bare 404 or embeddings priced at zero.
 
 Errors are normalised: connection refused / timeout / 5xx all become
 ``ProviderUnavailableError`` or ``ProviderTimeoutError``. The router and circuit
@@ -25,7 +30,7 @@ from __future__ import annotations
 import json
 import time
 from collections.abc import AsyncIterator, Sequence
-from typing import Any, cast
+from typing import Any, Final, cast
 
 import httpx
 import structlog
@@ -40,6 +45,9 @@ from llm_gateway.providers.base import (
     StreamChunk,
     TokenUsage,
 )
+
+MIN_OLLAMA_VERSION: Final = "0.3.4"
+_VERSION_HINT: Final = f"this gateway needs Ollama {MIN_OLLAMA_VERSION} or newer"
 
 _log = structlog.get_logger(__name__)
 
@@ -58,12 +66,15 @@ class OllamaProvider:
     ) -> None:
         self._base_url = base_url.rstrip("/")
         self._timeout_s = timeout_s
-        # Caller can pass a shared client for connection-pool reuse and tests;
-        # otherwise we create one lazily on first call.
         self._client = client
         self._owns_client = client is None
 
     async def _get_client(self) -> httpx.AsyncClient:
+        """The injected client, or one created on first use with a 10 s connect timeout.
+
+        Connect fails fast so the router falls back quickly when Ollama is
+        down; the read timeout stays long for slow CPU generation.
+        """
         if self._client is None:
             self._client = httpx.AsyncClient(
                 base_url=self._base_url,
@@ -72,6 +83,7 @@ class OllamaProvider:
         return self._client
 
     async def aclose(self) -> None:
+        """Close the HTTP client, unless it was injected (then its owner closes it)."""
         if self._client is not None and self._owns_client:
             await self._client.aclose()
             self._client = None
@@ -83,9 +95,16 @@ class OllamaProvider:
         *,
         temperature: float = 0.0,
         max_tokens: int | None = None,
+        think: bool = False,
     ) -> CompletionResult:
+        """One ``/api/chat`` call; latency covers the HTTP round trip only."""
         payload = _build_chat_payload(
-            model, messages, stream=False, temperature=temperature, max_tokens=max_tokens
+            model,
+            messages,
+            stream=False,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            think=think,
         )
         start = time.perf_counter()
         body = await self._post_json("/api/chat", payload)
@@ -99,9 +118,16 @@ class OllamaProvider:
         *,
         temperature: float = 0.0,
         max_tokens: int | None = None,
+        think: bool = False,
     ) -> AsyncIterator[StreamChunk]:
+        """Yield one chunk per NDJSON line of a streaming ``/api/chat`` call."""
         payload = _build_chat_payload(
-            model, messages, stream=True, temperature=temperature, max_tokens=max_tokens
+            model,
+            messages,
+            stream=True,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            think=think,
         )
         client = await self._get_client()
         try:
@@ -121,12 +147,11 @@ class OllamaProvider:
             raise ProviderUnavailableError(f"ollama: stream HTTP error: {exc}") from exc
 
     async def embed(self, model: str, text: str) -> EmbeddingResult:
+        """One ``/api/embed`` call for a single input string."""
         start = time.perf_counter()
-        body = await self._post_json("/api/embeddings", {"model": model, "prompt": text})
+        body = await self._post_json("/api/embed", {"model": model, "input": text})
         latency_ms = (time.perf_counter() - start) * 1000.0
-        return _parse_embedding_response(
-            body, requested_model=model, input_text=text, latency_ms=latency_ms
-        )
+        return _parse_embedding_response(body, requested_model=model, latency_ms=latency_ms)
 
     async def health(self) -> bool:
         """True iff the Ollama server responds 2xx to ``/api/tags``."""
@@ -139,6 +164,7 @@ class OllamaProvider:
         return response.is_success
 
     async def _post_json(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
+        """POST and decode a JSON object; transport and status failures become provider errors."""
         client = await self._get_client()
         try:
             response = await client.post(path, json=payload)
@@ -151,6 +177,12 @@ class OllamaProvider:
             raise ProviderUnavailableError(
                 f"ollama: {path} returned {response.status_code}: {response.text[:200]}"
             )
+        if response.status_code == 404 and not response.headers.get("content-type", "").startswith(
+            "application/json"
+        ):
+            # Unknown model: JSON error body. Unknown route: plain-text 404 from
+            # an Ollama too old to have it.
+            raise ProviderError(f"ollama: {path} returned 404 (no such route); {_VERSION_HINT}")
         if response.status_code >= 400:
             raise ProviderError(
                 f"ollama: {path} returned {response.status_code}: {response.text[:200]}"
@@ -173,15 +205,21 @@ def _build_chat_payload(
     stream: bool,
     temperature: float,
     max_tokens: int | None,
+    think: bool,
 ) -> dict[str, Any]:
+    """Ollama ``/api/chat`` body; OpenAI's ``max_tokens`` maps to Ollama's ``num_predict``.
+
+    ``think`` is always sent, ``false`` included: a thinking model left to its
+    default thinks, and models without thinking ignore the field.
+    """
     options: dict[str, Any] = {"temperature": temperature}
     if max_tokens is not None:
-        # Ollama uses num_predict, not max_tokens.
         options["num_predict"] = max_tokens
     return {
         "model": model,
         "messages": [{"role": m.role, "content": m.content} for m in messages],
         "stream": stream,
+        "think": think,
         "options": options,
     }
 
@@ -192,6 +230,7 @@ def _build_chat_payload(
 def _parse_chat_response(
     body: dict[str, Any], *, requested_model: str, latency_ms: float
 ) -> CompletionResult:
+    """A non-streaming ``/api/chat`` body; ``done_reason`` becomes the OpenAI ``finish_reason``."""
     message = _expect_dict(body.get("message"), field="message")
     content = _expect_str(message.get("content"), field="message.content")
     return CompletionResult(
@@ -204,6 +243,7 @@ def _parse_chat_response(
 
 
 def _parse_stream_line(line: str, *, requested_model: str) -> StreamChunk:
+    """One NDJSON line; only the ``done`` line carries usage and a finish reason."""
     try:
         parsed = json.loads(line)
     except json.JSONDecodeError as exc:
@@ -223,6 +263,7 @@ def _parse_stream_line(line: str, *, requested_model: str) -> StreamChunk:
         delta=delta,
         done=done,
         usage=_usage_from_body(chunk) if done else None,
+        finish_reason=str(chunk.get("done_reason") or "stop") if done else None,
     )
 
 
@@ -230,17 +271,19 @@ def _parse_embedding_response(
     body: dict[str, Any],
     *,
     requested_model: str,
-    input_text: str,
     latency_ms: float,
 ) -> EmbeddingResult:
-    embedding = _expect_numeric_list(body.get("embedding"), field="embedding")
-    # Ollama's /api/embeddings doesn't return token counts. Approximate from
-    # the input — the cost-attribution layer treats embeddings as input-only.
-    prompt_tokens = max(1, len(input_text.split()))
+    """The single vector of an ``/api/embed`` response, priced by ``prompt_eval_count``."""
+    embeddings = body.get("embeddings")
+    if not isinstance(embeddings, list) or len(cast(list[Any], embeddings)) != 1:
+        raise ProviderError("ollama: embeddings is not a list of exactly one vector")
+    embedding = _expect_numeric_list(cast(list[Any], embeddings)[0], field="embeddings[0]")
+    if not isinstance(body.get("prompt_eval_count"), int):
+        raise ProviderError(f"ollama: /api/embed sent no prompt_eval_count; {_VERSION_HINT}")
     return EmbeddingResult(
         model=str(body.get("model", requested_model)),
         embedding=embedding,
-        usage=TokenUsage(prompt_tokens=prompt_tokens, completion_tokens=0),
+        usage=_usage_from_body(body),
         latency_ms=latency_ms,
     )
 
@@ -249,7 +292,8 @@ def _usage_from_body(body: dict[str, Any]) -> TokenUsage:
     """Extract token usage from an Ollama response body.
 
     The fields are ``prompt_eval_count`` (input) and ``eval_count`` (output);
-    both are absent on streaming chunks that aren't the final one.
+    both are absent on streaming chunks that aren't the final one, and
+    ``/api/embed`` sends only the first.
     """
     prompt_tokens = body.get("prompt_eval_count")
     completion_tokens = body.get("eval_count")

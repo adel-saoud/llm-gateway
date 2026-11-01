@@ -1,20 +1,20 @@
 """Shared fixtures and test helpers.
 
 Every external dependency (Ollama, Redis, SQLite filesystem) is mocked or
-sandboxed so the suite stays hermetic — no network, no daemons, no shared state.
+sandboxed so the suite stays hermetic: no network, no daemons, no shared state.
 
 The helpers here are deliberately small and explicit. Tests assemble what they
 need from these primitives rather than relying on heavyweight magic fixtures:
 
-* :class:`FakeProvider` — minimal stand-in used by middleware tests that don't
+* :class:`FakeProvider`: minimal stand-in used by middleware tests that don't
   care about LLM behaviour.
-* :class:`ScriptedProvider` — controllable stand-in: tests pre-supply chat,
+* :class:`ScriptedProvider`: controllable stand-in; tests pre-supply chat,
   embed, and stream responses (or exceptions).
-* :func:`make_team` — keyword-only :class:`TeamConfig` factory.
-* :func:`gateway_client_factory` — context manager that builds a fully wired
+* :func:`make_team`: keyword-only :class:`TeamConfig` factory.
+* :func:`gateway_client_factory`: context manager that builds a fully wired
   ``TestClient`` with hermetic Redis/SQLite/provider stand-ins.
 
-Ollama HTTP traffic is intercepted by ``respx`` in the provider-level tests —
+Ollama HTTP traffic is intercepted by ``respx`` in the provider-level tests:
 see the per-test ``@respx.mock`` decorator.
 """
 
@@ -28,6 +28,7 @@ from typing import Any
 import pytest
 from fakeredis import FakeAsyncRedis
 from fastapi.testclient import TestClient
+from opentelemetry.sdk.trace import TracerProvider
 from pydantic import SecretStr
 
 from llm_gateway.auth.models import BudgetConfig, RateLimitConfig, TeamConfig
@@ -42,6 +43,7 @@ from llm_gateway.providers.base import (
     TokenUsage,
 )
 from llm_gateway.ratelimit.token_bucket import TokenBucket
+from llm_gateway.routing.policy import RoutingPolicy
 from llm_gateway.storage.db import CostLedger
 
 OLLAMA_BASE_URL = "http://ollama-test:11434"
@@ -58,7 +60,7 @@ def ollama_base_url() -> str:
 class FakeProvider:
     """No-network ``Provider`` for middleware / handler tests.
 
-    Only ``health()`` does anything useful — the LLM methods raise so a test
+    Only ``health()`` does anything useful: the LLM methods raise so a test
     accidentally invoking them fails loud instead of silently passing.
     """
 
@@ -103,6 +105,7 @@ class ScriptedProvider:
         self._stream_chunks = list(stream_chunks) if stream_chunks is not None else None
         self._healthy = healthy
         self.chat_calls = 0
+        self.think_requests: list[bool] = []
         self.embed_calls = 0
         self.stream_calls = 0
 
@@ -120,8 +123,10 @@ class ScriptedProvider:
         *,
         temperature: float = 0.0,
         max_tokens: int | None = None,
+        think: bool = False,
     ) -> CompletionResult:
         self.chat_calls += 1
+        self.think_requests.append(think)
         if self._chat_responses:
             item = self._chat_responses.pop(0)
             if isinstance(item, BaseException):
@@ -143,8 +148,10 @@ class ScriptedProvider:
         *,
         temperature: float = 0.0,
         max_tokens: int | None = None,
+        think: bool = False,
     ) -> AsyncIterator[StreamChunk]:
         self.stream_calls += 1
+        self.think_requests.append(think)
         chunks = (
             self._stream_chunks
             if self._stream_chunks is not None
@@ -184,13 +191,14 @@ def make_team(
     *,
     team_id: str = "t1",
     api_key: str = "sk-test",
-    allowed_models: tuple[str, ...] = ("llama3.2:3b", "qwen2.5:0.5b", "nomic-embed-text"),
+    allowed_models: tuple[str, ...] = ("qwen3.5:4b", "qwen3.5:0.8b", "qwen3-embedding:0.6b"),
     requests_per_minute: int = 600,
     burst_capacity: int = 1000,
     daily_usd: float = 100.0,
     is_admin: bool = False,
+    semantic_cache: bool = False,
 ) -> TeamConfig:
-    """Build a :class:`TeamConfig` with high-throughput defaults — override per test."""
+    """Build a :class:`TeamConfig` with high-throughput defaults: override per test."""
     return TeamConfig(
         team_id=team_id,
         api_key=SecretStr(api_key),
@@ -201,6 +209,7 @@ def make_team(
         ),
         budget=BudgetConfig(daily_usd=daily_usd),
         is_admin=is_admin,
+        semantic_cache=semantic_cache,
     )
 
 
@@ -209,7 +218,7 @@ def make_team(
 
 @pytest.fixture
 def settings(monkeypatch: pytest.MonkeyPatch) -> Settings:
-    """Default ``Settings`` with a fixed Ollama URL — env vars otherwise cleared."""
+    """Default ``Settings`` with a fixed Ollama URL: env vars otherwise cleared."""
     monkeypatch.setenv("GATEWAY_OLLAMA_BASE_URL", OLLAMA_BASE_URL)
     return Settings(_env_file=None)  # type: ignore[call-arg]
 
@@ -222,11 +231,15 @@ def gateway_client_factory(
     team: TeamConfig | None = None,
     teams: Sequence[TeamConfig] | None = None,
     provider: FakeProvider | ScriptedProvider | None = None,
+    routing_policy: RoutingPolicy | None = None,
+    tracer_provider: TracerProvider | None = None,
 ) -> Generator[TestClient]:
     """Yield a fully-wired ``TestClient`` for one test.
 
     Pass ``team=`` for a single-team setup or ``teams=`` for multi-team setups
-    (used by admin tests). Pass ``provider=`` to control LLM behaviour.
+    (used by admin tests). Pass ``provider=`` to control LLM behaviour and
+    ``routing_policy=`` to replace the policy built from settings, and
+    ``tracer_provider=`` to capture spans (in-memory exporter).
     """
     if teams is None:
         teams = [team or make_team()]
@@ -236,6 +249,8 @@ def gateway_client_factory(
         team_resolver=TeamResolver(teams),
         token_bucket=TokenBucket(FakeAsyncRedis()),  # type: ignore[arg-type]
         cost_ledger=CostLedger(tmp_path / "test.db"),
+        routing_policy=routing_policy,
+        tracer_provider=tracer_provider,
     )
     with TestClient(app) as client:
         yield client

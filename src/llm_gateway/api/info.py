@@ -1,4 +1,4 @@
-"""Informational endpoints — ``/v1/models`` and ``/v1/stats``.
+"""Informational endpoints: ``/v1/models`` and ``/v1/stats``.
 
 These give clients a stable view of what the gateway knows about: the model
 catalogue (with simulated prices) and the calling team's running spend.
@@ -9,7 +9,6 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-import structlog
 from fastapi import APIRouter, Request
 
 from llm_gateway.api.schemas import (
@@ -25,13 +24,12 @@ if TYPE_CHECKING:
     from llm_gateway.providers.registry import ProviderRegistry
     from llm_gateway.storage.db import CostLedger
 
-_log = structlog.get_logger(__name__)
-
 router = APIRouter(tags=["info"])
 
 
 @router.get("/v1/models")
 async def list_models(request: Request) -> ModelsListResponse:
+    """The model catalogue with the simulated per-1k prices the ledger charges."""
     registry: ProviderRegistry = request.app.state.registry
     return ModelsListResponse(
         data=[
@@ -49,6 +47,7 @@ async def list_models(request: Request) -> ModelsListResponse:
 
 @router.get("/v1/stats")
 async def stats(request: Request) -> StatsResponse:
+    """The calling team's spend today, its budget utilisation and the per-operation split."""
     team: TeamConfig = request.state.team
     enforcer: BudgetEnforcer = request.app.state.budget_enforcer
     ledger: CostLedger = request.app.state.cost_ledger

@@ -1,0 +1,527 @@
+{
+  "generated_at": "20261024T210634Z",
+  "dataset": "bench/cache_calibration.jsonl",
+  "embedding_model": "qwen3-embedding:0.6b",
+  "prefix": "Instruct: Given a question, retrieve questions that are semantically equivalent to the given question\nQuery:",
+  "machine": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "pairs": [
+    {
+      "a": "What is your return policy?",
+      "b": "How do returns work at your store?",
+      "should_hit": true,
+      "category": "paraphrase",
+      "similarity": 0.7858
+    },
+    {
+      "a": "How long does delivery take?",
+      "b": "How many days until my package arrives?",
+      "should_hit": true,
+      "category": "paraphrase",
+      "similarity": 0.7395
+    },
+    {
+      "a": "Can I change my delivery address?",
+      "b": "Is it possible to update the shipping address?",
+      "should_hit": true,
+      "category": "paraphrase",
+      "similarity": 0.8629
+    },
+    {
+      "a": "Do you ship internationally?",
+      "b": "Can you deliver outside the country?",
+      "should_hit": true,
+      "category": "paraphrase",
+      "similarity": 0.7613
+    },
+    {
+      "a": "How do I reset my password?",
+      "b": "I forgot my password, how can I reset it?",
+      "should_hit": true,
+      "category": "paraphrase",
+      "similarity": 0.909
+    },
+    {
+      "a": "What payment methods do you accept?",
+      "b": "Which ways can I pay?",
+      "should_hit": true,
+      "category": "paraphrase",
+      "similarity": 0.8374
+    },
+    {
+      "a": "Is there a warranty on bikes?",
+      "b": "Do bicycles come with a warranty?",
+      "should_hit": true,
+      "category": "paraphrase",
+      "similarity": 0.9228
+    },
+    {
+      "a": "How do I contact customer support?",
+      "b": "What is the best way to reach customer service?",
+      "should_hit": true,
+      "category": "paraphrase",
+      "similarity": 0.7736
+    },
+    {
+      "a": "Can I pick up my order in store?",
+      "b": "Is in-store pickup available for orders?",
+      "should_hit": true,
+      "category": "paraphrase",
+      "similarity": 0.8936
+    },
+    {
+      "a": "How do I cancel my subscription?",
+      "b": "What are the steps to cancel my subscription?",
+      "should_hit": true,
+      "category": "paraphrase",
+      "similarity": 0.9549
+    },
+    {
+      "a": "What sizes do running shoes come in?",
+      "b": "Which sizes are available for running shoes?",
+      "should_hit": true,
+      "category": "paraphrase",
+      "similarity": 0.9608
+    },
+    {
+      "a": "Do you offer gift cards?",
+      "b": "Can I buy a gift card?",
+      "should_hit": true,
+      "category": "paraphrase",
+      "similarity": 0.8529
+    },
+    {
+      "a": "How do I track my order?",
+      "b": "Where can I see the status of my order?",
+      "should_hit": true,
+      "category": "paraphrase",
+      "similarity": 0.8394
+    },
+    {
+      "a": "Are there student discounts?",
+      "b": "Do you have a discount for students?",
+      "should_hit": true,
+      "category": "paraphrase",
+      "similarity": 0.961
+    },
+    {
+      "a": "What is the refund for a damaged item?",
+      "b": "How do I get a refund if my item arrived damaged?",
+      "should_hit": true,
+      "category": "paraphrase",
+      "similarity": 0.9213
+    },
+    {
+      "a": "How much annual leave do employees get?",
+      "b": "How many vacation days do staff receive per year?",
+      "should_hit": true,
+      "category": "paraphrase",
+      "similarity": 0.7746
+    },
+    {
+      "a": "What is the remote work policy?",
+      "b": "What are the rules for working from home?",
+      "should_hit": true,
+      "category": "paraphrase",
+      "similarity": 0.7522
+    },
+    {
+      "a": "How do I submit an expense report?",
+      "b": "What is the process for filing expenses?",
+      "should_hit": true,
+      "category": "paraphrase",
+      "similarity": 0.7937
+    },
+    {
+      "a": "Who approves sick leave?",
+      "b": "Who needs to approve my sick leave?",
+      "should_hit": true,
+      "category": "paraphrase",
+      "similarity": 0.9106
+    },
+    {
+      "a": "Summarize the onboarding checklist",
+      "b": "Give me a summary of the onboarding checklist",
+      "should_hit": true,
+      "category": "paraphrase",
+      "similarity": 0.9887
+    },
+    {
+      "a": "Cancel order 123",
+      "b": "Cancel order 124",
+      "should_hit": false,
+      "category": "entity_number",
+      "similarity": 0.9166
+    },
+    {
+      "a": "What is the status of order 55812?",
+      "b": "What is the status of order 55813?",
+      "should_hit": false,
+      "category": "entity_number",
+      "similarity": 0.9471
+    },
+    {
+      "a": "Show sales for 2024",
+      "b": "Show sales for 2025",
+      "should_hit": false,
+      "category": "entity_number",
+      "similarity": 0.6697
+    },
+    {
+      "a": "Refund 40 euros to my card",
+      "b": "Refund 400 euros to my card",
+      "should_hit": false,
+      "category": "entity_number",
+      "similarity": 0.9954
+    },
+    {
+      "a": "Book a meeting room for 3 people",
+      "b": "Book a meeting room for 30 people",
+      "should_hit": false,
+      "category": "entity_number",
+      "similarity": 0.9156
+    },
+    {
+      "a": "Is SKU A-1001 in stock?",
+      "b": "Is SKU A-1002 in stock?",
+      "should_hit": false,
+      "category": "entity_number",
+      "similarity": 0.9522
+    },
+    {
+      "a": "Reset the password for employee 7781",
+      "b": "Reset the password for employee 7718",
+      "should_hit": false,
+      "category": "entity_number",
+      "similarity": 0.9721
+    },
+    {
+      "a": "What were returns in Q1?",
+      "b": "What were returns in Q3?",
+      "should_hit": false,
+      "category": "entity_number",
+      "similarity": 0.7767
+    },
+    {
+      "a": "What are the store hours in Paris?",
+      "b": "What are the store hours in Lyon?",
+      "should_hit": false,
+      "category": "entity_name",
+      "similarity": 0.7982
+    },
+    {
+      "a": "Is the blue tent waterproof?",
+      "b": "Is the green tent waterproof?",
+      "should_hit": false,
+      "category": "entity_name",
+      "similarity": 0.8771
+    },
+    {
+      "a": "Does the kayak come in red?",
+      "b": "Does the kayak come in yellow?",
+      "should_hit": false,
+      "category": "entity_name",
+      "similarity": 0.8497
+    },
+    {
+      "a": "What is the parental leave policy in France?",
+      "b": "What is the parental leave policy in Spain?",
+      "should_hit": false,
+      "category": "entity_name",
+      "similarity": 0.8335
+    },
+    {
+      "a": "Who is the manager of the marketing team?",
+      "b": "Who is the manager of the finance team?",
+      "should_hit": false,
+      "category": "entity_name",
+      "similarity": 0.7657
+    },
+    {
+      "a": "Show me hiking boots for women",
+      "b": "Show me hiking boots for men",
+      "should_hit": false,
+      "category": "entity_name",
+      "similarity": 0.7485
+    },
+    {
+      "a": "Is the Lisbon warehouse open on Sunday?",
+      "b": "Is the Porto warehouse open on Sunday?",
+      "should_hit": false,
+      "category": "entity_name",
+      "similarity": 0.8257
+    },
+    {
+      "a": "Translate the return policy into German",
+      "b": "Translate the return policy into Italian",
+      "should_hit": false,
+      "category": "entity_name",
+      "similarity": 0.895
+    },
+    {
+      "a": "How do I return an item?",
+      "b": "How do I exchange an item?",
+      "should_hit": false,
+      "category": "different_intent",
+      "similarity": 0.7746
+    },
+    {
+      "a": "How do I cancel my order?",
+      "b": "How do I place an order?",
+      "should_hit": false,
+      "category": "different_intent",
+      "similarity": 0.7558
+    },
+    {
+      "a": "Can I increase my credit limit?",
+      "b": "Can I decrease my credit limit?",
+      "should_hit": false,
+      "category": "different_intent",
+      "similarity": 0.8501
+    },
+    {
+      "a": "How do I enable two-factor authentication?",
+      "b": "How do I disable two-factor authentication?",
+      "should_hit": false,
+      "category": "different_intent",
+      "similarity": 0.8152
+    },
+    {
+      "a": "Is the product suitable for children?",
+      "b": "Is the product unsafe for children?",
+      "should_hit": false,
+      "category": "different_intent",
+      "similarity": 0.8735
+    },
+    {
+      "a": "What is the deadline to request leave?",
+      "b": "What is the deadline to cancel leave?",
+      "should_hit": false,
+      "category": "different_intent",
+      "similarity": 0.8428
+    },
+    {
+      "a": "Write a short email accepting the offer",
+      "b": "Write a short email declining the offer",
+      "should_hit": false,
+      "category": "different_intent",
+      "similarity": 0.8139
+    },
+    {
+      "a": "What is included in the premium plan?",
+      "b": "What is not included in the premium plan?",
+      "should_hit": false,
+      "category": "different_intent",
+      "similarity": 0.9033
+    },
+    {
+      "a": "What is your return policy?",
+      "b": "What is the weather tomorrow?",
+      "should_hit": false,
+      "category": "unrelated",
+      "similarity": 0.518
+    },
+    {
+      "a": "How do I reset my password?",
+      "b": "Recommend a tent for winter camping",
+      "should_hit": false,
+      "category": "unrelated",
+      "similarity": 0.3164
+    },
+    {
+      "a": "How much annual leave do employees get?",
+      "b": "How do I clean a bicycle chain?",
+      "should_hit": false,
+      "category": "unrelated",
+      "similarity": 0.2644
+    },
+    {
+      "a": "Do you offer gift cards?",
+      "b": "Explain the expense approval workflow",
+      "should_hit": false,
+      "category": "unrelated",
+      "similarity": 0.3774
+    }
+  ],
+  "sweep": [
+    {
+      "threshold": 0.8,
+      "hit_rate_raw": 0.65,
+      "false_hits_raw": 17,
+      "false_hit_rate_raw": 0.6071428571428571,
+      "hit_rate_guarded": 0.65,
+      "false_hits_guarded": 11,
+      "false_hit_rate_guarded": 0.39285714285714285
+    },
+    {
+      "threshold": 0.81,
+      "hit_rate_raw": 0.65,
+      "false_hits_raw": 17,
+      "false_hit_rate_raw": 0.6071428571428571,
+      "hit_rate_guarded": 0.65,
+      "false_hits_guarded": 11,
+      "false_hit_rate_guarded": 0.39285714285714285
+    },
+    {
+      "threshold": 0.82,
+      "hit_rate_raw": 0.65,
+      "false_hits_raw": 15,
+      "false_hit_rate_raw": 0.5357142857142857,
+      "hit_rate_guarded": 0.65,
+      "false_hits_guarded": 9,
+      "false_hit_rate_guarded": 0.32142857142857145
+    },
+    {
+      "threshold": 0.83,
+      "hit_rate_raw": 0.65,
+      "false_hits_raw": 14,
+      "false_hit_rate_raw": 0.5,
+      "hit_rate_guarded": 0.65,
+      "false_hits_guarded": 8,
+      "false_hit_rate_guarded": 0.2857142857142857
+    },
+    {
+      "threshold": 0.84,
+      "hit_rate_raw": 0.55,
+      "false_hits_raw": 13,
+      "false_hit_rate_raw": 0.4642857142857143,
+      "hit_rate_guarded": 0.55,
+      "false_hits_guarded": 7,
+      "false_hit_rate_guarded": 0.25
+    },
+    {
+      "threshold": 0.85,
+      "hit_rate_raw": 0.55,
+      "false_hits_raw": 11,
+      "false_hit_rate_raw": 0.39285714285714285,
+      "hit_rate_guarded": 0.55,
+      "false_hits_guarded": 5,
+      "false_hit_rate_guarded": 0.17857142857142858
+    },
+    {
+      "threshold": 0.86,
+      "hit_rate_raw": 0.5,
+      "false_hits_raw": 10,
+      "false_hit_rate_raw": 0.35714285714285715,
+      "hit_rate_guarded": 0.5,
+      "false_hits_guarded": 4,
+      "false_hit_rate_guarded": 0.14285714285714285
+    },
+    {
+      "threshold": 0.87,
+      "hit_rate_raw": 0.45,
+      "false_hits_raw": 10,
+      "false_hit_rate_raw": 0.35714285714285715,
+      "hit_rate_guarded": 0.45,
+      "false_hits_guarded": 4,
+      "false_hit_rate_guarded": 0.14285714285714285
+    },
+    {
+      "threshold": 0.88,
+      "hit_rate_raw": 0.45,
+      "false_hits_raw": 8,
+      "false_hit_rate_raw": 0.2857142857142857,
+      "hit_rate_guarded": 0.45,
+      "false_hits_guarded": 2,
+      "false_hit_rate_guarded": 0.07142857142857142
+    },
+    {
+      "threshold": 0.89,
+      "hit_rate_raw": 0.45,
+      "false_hits_raw": 8,
+      "false_hit_rate_raw": 0.2857142857142857,
+      "hit_rate_guarded": 0.45,
+      "false_hits_guarded": 2,
+      "false_hit_rate_guarded": 0.07142857142857142
+    },
+    {
+      "threshold": 0.9,
+      "hit_rate_raw": 0.4,
+      "false_hits_raw": 7,
+      "false_hit_rate_raw": 0.25,
+      "hit_rate_guarded": 0.4,
+      "false_hits_guarded": 1,
+      "false_hit_rate_guarded": 0.03571428571428571
+    },
+    {
+      "threshold": 0.91,
+      "hit_rate_raw": 0.35,
+      "false_hits_raw": 6,
+      "false_hit_rate_raw": 0.21428571428571427,
+      "hit_rate_guarded": 0.35,
+      "false_hits_guarded": 0,
+      "false_hit_rate_guarded": 0.0
+    },
+    {
+      "threshold": 0.92,
+      "hit_rate_raw": 0.3,
+      "false_hits_raw": 4,
+      "false_hit_rate_raw": 0.14285714285714285,
+      "hit_rate_guarded": 0.3,
+      "false_hits_guarded": 0,
+      "false_hit_rate_guarded": 0.0
+    },
+    {
+      "threshold": 0.93,
+      "hit_rate_raw": 0.2,
+      "false_hits_raw": 4,
+      "false_hit_rate_raw": 0.14285714285714285,
+      "hit_rate_guarded": 0.2,
+      "false_hits_guarded": 0,
+      "false_hit_rate_guarded": 0.0
+    },
+    {
+      "threshold": 0.94,
+      "hit_rate_raw": 0.2,
+      "false_hits_raw": 4,
+      "false_hit_rate_raw": 0.14285714285714285,
+      "hit_rate_guarded": 0.2,
+      "false_hits_guarded": 0,
+      "false_hit_rate_guarded": 0.0
+    },
+    {
+      "threshold": 0.95,
+      "hit_rate_raw": 0.2,
+      "false_hits_raw": 3,
+      "false_hit_rate_raw": 0.10714285714285714,
+      "hit_rate_guarded": 0.2,
+      "false_hits_guarded": 0,
+      "false_hit_rate_guarded": 0.0
+    },
+    {
+      "threshold": 0.96,
+      "hit_rate_raw": 0.15,
+      "false_hits_raw": 2,
+      "false_hit_rate_raw": 0.07142857142857142,
+      "hit_rate_guarded": 0.15,
+      "false_hits_guarded": 0,
+      "false_hit_rate_guarded": 0.0
+    },
+    {
+      "threshold": 0.97,
+      "hit_rate_raw": 0.05,
+      "false_hits_raw": 2,
+      "false_hit_rate_raw": 0.07142857142857142,
+      "hit_rate_guarded": 0.05,
+      "false_hits_guarded": 0,
+      "false_hit_rate_guarded": 0.0
+    },
+    {
+      "threshold": 0.98,
+      "hit_rate_raw": 0.05,
+      "false_hits_raw": 1,
+      "false_hit_rate_raw": 0.03571428571428571,
+      "hit_rate_guarded": 0.05,
+      "false_hits_guarded": 0,
+      "false_hit_rate_guarded": 0.0
+    },
+    {
+      "threshold": 0.99,
+      "hit_rate_raw": 0.0,
+      "false_hits_raw": 1,
+      "false_hit_rate_raw": 0.03571428571428571,
+      "hit_rate_guarded": 0.0,
+      "false_hits_guarded": 0,
+      "false_hit_rate_guarded": 0.0
+    }
+  ]
+}

@@ -20,17 +20,17 @@ headers {
 
 body:json {
   {
-    "allowed_models": ["qwen2.5:0.5b", "nomic-embed-text", "llama3.2:3b"]
+    "allowed_models": ["budget", "embeddings", "high_quality"]
   }
 }
 
 docs {
-  Adds llama3.2:3b to the customer-support team's model whitelist.
+  Adds the high_quality tier to the customer-support team's whitelist.
 
-  By default the customer-support team is restricted to qwen2.5:0.5b and
-  nomic-embed-text (see config/teams.example.yaml). This request grants it
-  access to the high-quality model as well.
+  By default the customer-support team is restricted to the budget and
+  embeddings tiers (see config/teams.example.yaml). Entries may be tiers or
+  model ids; a tier follows the GATEWAY_MODEL_* settings.
 
-  An empty array `[]` means no restriction — all registry models are allowed.
+  An empty array `[]` means no restriction: all registry models are allowed.
   Requests for models not in the whitelist receive 403 Forbidden.
 }

@@ -1,0 +1,101 @@
+{
+  "api_version": "2",
+  "endpoint": "POST /v2/route",
+  "request": {
+    "$defs": {
+      "ChatCompletionMessage": {
+        "description": "One message in an OpenAI-compatible chat-completions request.",
+        "properties": {
+          "role": {
+            "enum": [
+              "system",
+              "user",
+              "assistant"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "content"
+        ],
+        "title": "ChatCompletionMessage",
+        "type": "object"
+      }
+    },
+    "description": "Request body for ``POST /v2/route``. Unknown fields are ignored.",
+    "properties": {
+      "tenant_id": {
+        "description": "Who the traffic belongs to. Scopes the correction memory.",
+        "maxLength": 128,
+        "minLength": 1,
+        "title": "Tenant Id",
+        "type": "string"
+      },
+      "messages": {
+        "description": "OpenAI chat messages. The last user message is classified.",
+        "items": {
+          "$ref": "#/$defs/ChatCompletionMessage"
+        },
+        "minItems": 1,
+        "title": "Messages",
+        "type": "array"
+      }
+    },
+    "required": [
+      "tenant_id",
+      "messages"
+    ],
+    "title": "RouteRequest",
+    "type": "object"
+  },
+  "response": {
+    "$defs": {
+      "ComplexityTier": {
+        "description": "Routing tiers in increasing order of expected model cost.\n\nEach tier maps to exactly one model in the registry: see ``router.models``.",
+        "enum": [
+          "simple",
+          "moderate"
+        ],
+        "title": "ComplexityTier",
+        "type": "string"
+      }
+    },
+    "additionalProperties": false,
+    "description": "Routing decision returned by ``POST /v2/route``.\n\nNo model id on purpose: the caller owns its model registry, allowlists\nand fallbacks, and maps ``tier`` onto them.",
+    "properties": {
+      "route_id": {
+        "description": "Autopilot's id for this decision, for audit logs.",
+        "title": "Route Id",
+        "type": "string"
+      },
+      "tier": {
+        "$ref": "#/$defs/ComplexityTier"
+      },
+      "confidence": {
+        "maximum": 1.0,
+        "minimum": 0.0,
+        "title": "Confidence",
+        "type": "number"
+      },
+      "reason": {
+        "description": "What decided the tier. Known values: stage_1_embedding, stage_2_zero_shot, correction_memory. Callers must accept unknown values.",
+        "title": "Reason",
+        "type": "string"
+      }
+    },
+    "required": [
+      "route_id",
+      "tier",
+      "confidence",
+      "reason"
+    ],
+    "title": "RouteResponse",
+    "type": "object"
+  }
+}

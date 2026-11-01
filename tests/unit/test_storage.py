@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import sqlite3
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -18,7 +20,7 @@ async def ledger(tmp_path: Path) -> CostLedger:
 def _entry(
     *,
     team_id: str = "t",
-    model_id: str = "llama3.2:3b",
+    model_id: str = "qwen3.5:4b",
     operation_type: str = "generation",
     input_tokens: int = 10,
     output_tokens: int = 5,
@@ -84,3 +86,28 @@ async def test_initialize_creates_parent_directory(tmp_path: Path) -> None:
     ledger = CostLedger(nested)
     await ledger.initialize()
     assert nested.exists()
+
+
+async def test_initialize_puts_the_file_in_wal_mode(ledger: CostLedger) -> None:
+    # WAL lives in the file, so a fresh plain connection must see it.
+    with sqlite3.connect(ledger.db_path) as db:
+        assert db.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
+
+
+async def test_concurrent_reads_and_writes_all_land(ledger: CostLedger) -> None:
+    """The per-request pattern (read today's spend, append a row) at once, many times."""
+    now = datetime.now(UTC)
+    writes = [ledger.record(_entry(request_id=f"r{i}", cost_usd=0.001)) for i in range(200)]
+    reads = [ledger.total_for_day("t", day=now) for _ in range(200)]
+    await asyncio.gather(*writes, *reads)
+    assert round(await ledger.total_for_day("t", day=now), 6) == 0.2
+
+
+async def test_keep_wal_open_keeps_the_wal_file_between_writes(ledger: CostLedger) -> None:
+    wal_file = ledger.db_path.with_name(ledger.db_path.name + "-wal")
+    async with ledger.keep_wal_open():
+        await ledger.record(_entry())
+        assert wal_file.exists()
+    # Without the held connection, the last close checkpoints and deletes it.
+    await ledger.record(_entry(request_id="req-2"))
+    assert not wal_file.exists()

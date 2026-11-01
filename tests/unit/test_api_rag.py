@@ -57,7 +57,7 @@ def test_cost_report_returns_breakdown(settings: Settings, tmp_path: Path) -> No
 
 
 def test_cost_report_empty_for_new_team(settings: Settings, tmp_path: Path) -> None:
-    # No seeding — fresh ledger
+    # No seeding: fresh ledger
     with gateway_client_factory(settings, tmp_path) as client:
         response = client.get("/v1/rag/cost-report", headers=AUTH)
     assert response.status_code == 200

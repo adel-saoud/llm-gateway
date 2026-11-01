@@ -15,7 +15,7 @@ def test_within_burst_capacity_passes(settings: Settings, tmp_path: Path) -> Non
     with gateway_client_factory(settings, tmp_path, team=team) as client:
         for _ in range(3):
             response = client.post("/v1/does-not-exist", json={}, headers=AUTH)
-            # No matching route is registered — 404 confirms the request
+            # No matching route is registered: 404 confirms the request
             # passed every middleware and only failed at the router.
             assert response.status_code == 404
 

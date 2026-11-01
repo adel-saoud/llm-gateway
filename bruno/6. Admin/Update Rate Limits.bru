@@ -28,21 +28,21 @@ body:json {
 }
 
 docs {
-  Updates rate-limit parameters for a team — no gateway restart required.
+  Updates rate-limit parameters for a team: no gateway restart required.
 
   Requires the calling team to have `is_admin: true` in teams.yaml.
   The `product-search` team (apiKey env var) has admin access by default.
 
-  The update is applied atomically to the in-memory resolver — requests
+  The update is applied atomically to the in-memory resolver: requests
   already in flight keep their old limits; new requests pick up the new values
   immediately.
 
-  The YAML file on disk is NOT updated — fold the change into source control
+  The YAML file on disk is NOT updated: fold the change into source control
   separately to persist across restarts.
 
-  Fields (all optional — omit to leave unchanged):
-  - `rate_limits.requests_per_minute` — refill rate for the token bucket
-  - `rate_limits.burst_capacity`      — maximum burst above the steady-state rate
-  - `budget.daily_usd`                — daily USD cap
-  - `allowed_models`                  — array of allowed model IDs
+  Fields (all optional: omit to leave unchanged):
+  - `rate_limits.requests_per_minute`: refill rate for the token bucket
+  - `rate_limits.burst_capacity`      maximum burst above the steady-state rate
+  - `budget.daily_usd`                daily USD cap
+  - `allowed_models`                  array of allowed model IDs
 }

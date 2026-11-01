@@ -37,10 +37,10 @@ data/
 .env
 .env.local
 
-# Runtime team config — contains API keys; copy from teams.example.yaml.
+# Runtime team config: contains API keys; copy from teams.example.yaml.
 config/teams.yaml
 
-# Local compose override — copy from docker-compose.override.yml.example
+# Local compose override: copy from docker-compose.override.yml.example
 docker-compose.override.yml
 
 # Editors / AI agents
@@ -61,3 +61,6 @@ ollama_data/
 prometheus_data/
 grafana_data/
 redis_data/
+
+# Local brag clips, never committed
+brag-output/

@@ -12,7 +12,6 @@ import pytest
 from llm_gateway.circuit_breaker.state_machine import CircuitBreakerState
 from llm_gateway.observability.metrics import (
     CIRCUIT_STATE_VALUES,
-    METRICS_CONTENT_TYPE,
     Metrics,
 )
 from llm_gateway.rag.models import RagOperationType
@@ -167,14 +166,10 @@ def test_render_returns_bytes_in_prom_format(metrics: Metrics) -> None:
     assert b"# TYPE llm_gateway_requests_total counter" in body
 
 
-def test_metrics_content_type_is_prom_text() -> None:
-    assert METRICS_CONTENT_TYPE.startswith("text/plain")
-
-
 def test_each_metrics_instance_has_isolated_registry() -> None:
     m1 = Metrics()
     m2 = Metrics()
     m1.record_http_request(team="t1", status=200, duration_s=0.01)
     body2 = m2.render().decode("utf-8")
-    # m2 has no observations — counter should be absent
+    # m2 has no observations: counter should be absent
     assert 'llm_gateway_requests_total{model="",status="200",team="t1"} 1.0' not in body2

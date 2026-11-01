@@ -1,41 +1,44 @@
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c  # frozen: v6.0.0
     hooks:
-      - id: trailing-whitespace
-      - id: end-of-file-fixer
       - id: check-yaml
       - id: check-toml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
       - id: check-added-large-files
-      - id: check-merge-conflict
-      - id: detect-private-key
-      - id: mixed-line-ending
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.14
+    rev: f368fb366ff7f2f808dd324b83a6d32267799e19  # frozen: v0.17.2
     hooks:
-      - id: ruff
+      - id: ruff-check
         args: [--fix]
       - id: ruff-format
 
-  - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.409
+  # Pyright runs in the project venv so it sees the locked dependencies.
+  - repo: local
     hooks:
       - id: pyright
-        additional_dependencies:
-          - fastapi>=0.136
-          - pydantic>=2.13
-          - pydantic-settings>=2.14
-          - httpx>=0.28
-          - redis>=7.4
-          - aiosqlite>=0.22
-          - structlog>=25.5
-          - prometheus-client>=0.25
-          - opentelemetry-sdk>=1.42
-          - typer>=0.25
+        name: pyright
+        entry: uv run pyright
+        language: system
+        types: [python]
+        pass_filenames: false
+      # The producer can change without a file changing here, so always run.
+      - id: sync-schemas
+        name: contract copies match their producer
+        entry: uv run python scripts/sync_schemas.py --check
+        language: system
+        pass_filenames: false
+        always_run: true
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: 83d9cd684c87d95d656c1458ef04895a7f1cbd8e  # frozen: v8.30.1
+    hooks:
+      - id: gitleaks
 
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: v4.1.0
+    rev: 0c47f153e36705819b4d819508fa913d979c1ccc  # frozen: v4.19.3
     hooks:
       - id: commitizen
         stages: [commit-msg]

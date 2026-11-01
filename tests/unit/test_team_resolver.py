@@ -48,7 +48,7 @@ def test_from_yaml_loads_valid_file(tmp_path: Path) -> None:
 teams:
   - team_id: search-team
     api_key: sk-search
-    allowed_models: [llama3.2:3b]
+    allowed_models: [qwen3.5:4b]
     rate_limits:
       requests_per_minute: 60
       burst_capacity: 100

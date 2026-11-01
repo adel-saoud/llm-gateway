@@ -10,7 +10,7 @@ def _make_team(**overrides: object) -> TeamConfig:
     base: dict[str, object] = {
         "team_id": "search-team",
         "api_key": SecretStr("sk-gw-x"),
-        "allowed_models": ("llama3.2:3b",),
+        "allowed_models": ("qwen3.5:4b",),
         "rate_limits": RateLimitConfig(requests_per_minute=60, burst_capacity=100),
         "budget": BudgetConfig(daily_usd=10.0),
     }
@@ -28,14 +28,23 @@ def test_refill_per_second_derived() -> None:
 def test_empty_allowed_models_means_unrestricted() -> None:
     team = _make_team(allowed_models=())
     assert team.is_model_allowed("anything") is True
-    assert team.is_model_allowed("llama3.2:3b") is True
+    assert team.is_model_allowed("qwen3.5:4b") is True
 
 
 def test_allowed_models_whitelist_enforced() -> None:
-    team = _make_team(allowed_models=("llama3.2:3b", "nomic-embed-text"))
-    assert team.is_model_allowed("llama3.2:3b") is True
-    assert team.is_model_allowed("nomic-embed-text") is True
-    assert team.is_model_allowed("qwen2.5:0.5b") is False
+    team = _make_team(allowed_models=("qwen3.5:4b", "qwen3-embedding:0.6b"))
+    assert team.is_model_allowed("qwen3.5:4b") is True
+    assert team.is_model_allowed("qwen3-embedding:0.6b") is True
+    assert team.is_model_allowed("qwen3.5:0.8b") is False
+
+
+def test_allowed_models_may_name_tiers() -> None:
+    team = _make_team(allowed_models=("budget", "embeddings"))
+    assert team.is_model_allowed("any-budget-model", "budget") is True
+    assert team.is_model_allowed("any-embedder", "embeddings") is True
+    assert team.is_model_allowed("any-big-model", "high_quality") is False
+    # A model the registry does not know has no tier, so a tier entry never admits it.
+    assert team.is_model_allowed("unknown-model", None) is False
 
 
 def test_team_config_rejects_unknown_keys() -> None:

@@ -28,7 +28,7 @@ body:json {
       },
       {
         "role": "user",
-        "content": "Question: Which headphones have the best noise cancellation under $300?\nPassages:\n- Sony WH-1000XM5 — 30-hour battery, noise cancellation, $299.\n- Bose QuietComfort 45 — 24-hour battery, adjustable ANC, $279.\n- Apple AirPods Pro (2nd gen) — 6-hour battery (30h with case), $249."
+        "content": "Question: Which headphones have the best noise cancellation under $300?\nPassages:\n- Sony WH-1000XM5: 30-hour battery, noise cancellation, $299.\n- Bose QuietComfort 45: 24-hour battery, adjustable ANC, $279.\n- Apple AirPods Pro (2nd gen): 6-hour battery (30h with case), $249."
       }
     ],
     "max_tokens": 256,
@@ -37,14 +37,14 @@ body:json {
 }
 
 docs {
-  Sends a generation request using the high-quality model (llama3.2:3b by default).
+  Sends a generation request using the high-quality model (qwen3.5:4b by default).
 
   The gateway automatically builds a two-candidate fallback chain:
-  llama3.2:3b → qwen2.5:0.5b. If the primary is unavailable or the circuit
+  qwen3.5:4b → qwen3.5:0.8b. If the primary is unavailable or the circuit
   breaker is OPEN, the request falls back to the budget model transparently.
 
   Response headers:
-  - `X-Gateway-Cost-USD`       — cost of this specific request
-  - `X-Gateway-Model-Used`     — actual model that served it (may differ on fallback)
-  - `X-Gateway-Rag-Operation`  — classifier result (generation for this request)
+  - `X-Gateway-Cost-USD`       cost of this specific request
+  - `X-Gateway-Model-Used`     actual model that served it (may differ on fallback)
+  - `X-Gateway-Rag-Operation`  classifier result (generation for this request)
 }

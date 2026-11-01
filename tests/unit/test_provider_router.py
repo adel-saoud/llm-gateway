@@ -1,4 +1,4 @@
-"""Provider router — fallback chain + circuit-breaker integration."""
+"""Provider router: fallback chain + circuit-breaker integration."""
 
 from __future__ import annotations
 
@@ -95,12 +95,12 @@ async def _build_breaker(
 async def test_first_candidate_succeeds(tmp_path: Path) -> None:
     breaker = await _build_breaker(tmp_path)
     router = ProviderRouter(breaker)
-    primary = _ScriptedProvider("ollama", chat_script=[_make_result(model="llama3.2:3b")])
-    chain = [RouteCandidate(primary, "llama3.2:3b")]
+    primary = _ScriptedProvider("ollama", chat_script=[_make_result(model="qwen3.5:4b")])
+    chain = [RouteCandidate(primary, "qwen3.5:4b")]
     result = await router.chat(chain, [ChatMessage(role="user", content="hi")])
     assert result.content == "ok"
     assert primary.chat_calls == 1
-    assert await breaker.current_state("ollama", "llama3.2:3b") is CircuitBreakerState.CLOSED
+    assert await breaker.current_state("ollama", "qwen3.5:4b") is CircuitBreakerState.CLOSED
 
 
 # ── Fallback on unavailable ────────────────────────────────────────────────
@@ -112,14 +112,14 @@ async def test_fallback_to_next_on_provider_unavailable(tmp_path: Path) -> None:
 
     primary = _ScriptedProvider("ollama-primary", chat_script=[ProviderUnavailableError("down")])
     fallback = _ScriptedProvider(
-        "ollama-fallback", chat_script=[_make_result(model="qwen2.5:0.5b")]
+        "ollama-fallback", chat_script=[_make_result(model="qwen3.5:0.8b")]
     )
     chain = [
-        RouteCandidate(primary, "llama3.2:3b"),
-        RouteCandidate(fallback, "qwen2.5:0.5b"),
+        RouteCandidate(primary, "qwen3.5:4b"),
+        RouteCandidate(fallback, "qwen3.5:0.8b"),
     ]
     result = await router.chat(chain, [ChatMessage(role="user", content="hi")])
-    assert result.model == "qwen2.5:0.5b"
+    assert result.model == "qwen3.5:0.8b"
     assert primary.chat_calls == 1
     assert fallback.chat_calls == 1
 
@@ -139,7 +139,7 @@ async def test_fallback_on_timeout(tmp_path: Path) -> None:
 
 
 async def test_provider_error_propagates_no_fallback(tmp_path: Path) -> None:
-    """``ProviderError`` (e.g. 4xx) is a request-shape problem — surface it immediately."""
+    """``ProviderError`` (e.g. 4xx) is a request-shape problem: surface it immediately."""
     breaker = await _build_breaker(tmp_path)
     router = ProviderRouter(breaker)
     primary = _ScriptedProvider("p1", chat_script=[ProviderError("400 bad request")])
@@ -180,7 +180,7 @@ async def test_open_circuit_skipped_in_chain(tmp_path: Path) -> None:
     fallback = _ScriptedProvider("p2", chat_script=[_make_result(model="m")])
     chain = [RouteCandidate(primary, "m"), RouteCandidate(fallback, "m")]
     await router.chat(chain, [ChatMessage(role="user", content="hi")])
-    assert primary.chat_calls == 0  # Skipped — circuit OPEN
+    assert primary.chat_calls == 0  # Skipped: circuit OPEN
     assert fallback.chat_calls == 1
 
 

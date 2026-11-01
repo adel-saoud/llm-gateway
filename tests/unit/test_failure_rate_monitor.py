@@ -33,7 +33,7 @@ def test_window_evicts_oldest() -> None:
     monitor.record_failure("p", "m")
     monitor.record_failure("p", "m")
     monitor.record_failure("p", "m")
-    # 3 failures — 100%
+    # 3 failures: 100%
     assert monitor.failure_rate("p", "m") == 1.0
     # Next success evicts the oldest failure → 2 failures + 1 success
     monitor.record_success("p", "m")

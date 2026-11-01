@@ -1,12 +1,12 @@
-"""Provider interface — structural Protocol over the wire contract.
+"""Provider interface: structural Protocol over the wire contract.
 
 The gateway speaks to one or more provider backends (today: Ollama). The
-``Provider`` Protocol is intentionally minimal — chat, streaming chat, embed,
-health — so swapping in a different backend is a matter of writing a new
+``Provider`` Protocol is intentionally minimal: chat, streaming chat, embed,
+health: so swapping in a different backend is a matter of writing a new
 adapter, not rewiring the routing layer.
 
 Errors are normalised to two domain types so callers don't need to know about
-``httpx.ConnectError`` vs ``httpx.ReadTimeout`` vs JSON decode errors — the
+``httpx.ConnectError`` vs ``httpx.ReadTimeout`` vs JSON decode errors: the
 distinction the circuit breaker and router care about is *transient vs fatal*.
 """
 
@@ -22,7 +22,7 @@ class ProviderError(Exception):
 
 
 class ProviderTimeoutError(ProviderError):
-    """Request exceeded the per-call timeout — counts toward circuit-breaker failure rate."""
+    """Request exceeded the per-call timeout: counts toward circuit-breaker failure rate."""
 
 
 class ProviderUnavailableError(ProviderError):
@@ -46,6 +46,7 @@ class TokenUsage:
 
     @property
     def total_tokens(self) -> int:
+        """OpenAI's ``total_tokens``."""
         return self.prompt_tokens + self.completion_tokens
 
 
@@ -64,13 +65,16 @@ class CompletionResult:
 class StreamChunk:
     """One delta in a streaming chat completion.
 
-    The final chunk has ``done=True`` and may carry final ``usage`` figures.
+    The final chunk has ``done=True`` and may carry final ``usage`` figures
+    and the provider's ``finish_reason`` (for example ``"length"`` when
+    ``max_tokens`` cut the answer short).
     """
 
     model: str
     delta: str
     done: bool
     usage: TokenUsage | None = None
+    finish_reason: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,7 +92,9 @@ class Provider(Protocol):
     """Structural interface every provider adapter implements."""
 
     @property
-    def name(self) -> str: ...
+    def name(self) -> str:
+        """Provider id used in circuit keys and as ``gen_ai.provider.name`` on spans."""
+        ...
 
     async def chat(
         self,
@@ -97,7 +103,10 @@ class Provider(Protocol):
         *,
         temperature: float = 0.0,
         max_tokens: int | None = None,
-    ) -> CompletionResult: ...
+        think: bool = False,
+    ) -> CompletionResult:
+        """One non-streaming completion of ``messages`` by ``model``."""
+        ...
 
     def stream_chat(
         self,
@@ -106,8 +115,15 @@ class Provider(Protocol):
         *,
         temperature: float = 0.0,
         max_tokens: int | None = None,
-    ) -> AsyncIterator[StreamChunk]: ...
+        think: bool = False,
+    ) -> AsyncIterator[StreamChunk]:
+        """Completion deltas; the last chunk has ``done=True`` and the usage."""
+        ...
 
-    async def embed(self, model: str, text: str) -> EmbeddingResult: ...
+    async def embed(self, model: str, text: str) -> EmbeddingResult:
+        """Embedding of one input string, with the input token count."""
+        ...
 
-    async def health(self) -> bool: ...
+    async def health(self) -> bool:
+        """True when the backend answers; used by ``/health/ready`` only."""
+        ...

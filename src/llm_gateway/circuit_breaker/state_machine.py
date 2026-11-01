@@ -1,10 +1,10 @@
-"""Three-state circuit breaker — CLOSED / OPEN / HALF_OPEN — per (provider, model).
+"""Three-state circuit breaker (CLOSED / OPEN / HALF_OPEN) per (provider, model).
 
 State transitions:
 
 * **CLOSED → OPEN** when the failure rate over the most recent traffic crosses
   ``failure_rate_threshold`` AND at least ``min_requests`` samples are
-  available. Below ``min_requests`` we don't act — small-sample failure rates
+  available. Below ``min_requests`` we don't act: small-sample failure rates
   are too noisy.
 * **OPEN → HALF_OPEN** automatically once ``open_duration_s`` has elapsed
   since the breaker opened. The next request is allowed through as a probe.
@@ -14,7 +14,7 @@ State transitions:
 
 State is persisted via :class:`~llm_gateway.storage.db.CircuitStateRepository`
 so the breaker's verdict survives process restart. The failure-rate window
-is in-memory only — see :mod:`llm_gateway.circuit_breaker.monitor`.
+is in-memory only: see :mod:`llm_gateway.circuit_breaker.monitor`.
 
 Caller pattern::
 
@@ -32,7 +32,6 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
-from typing import TypeAlias
 
 import structlog
 
@@ -50,7 +49,8 @@ class CircuitBreakerState(StrEnum):
     HALF_OPEN = "half_open"
 
 
-OnStateChange: TypeAlias = Callable[[str, str, "CircuitBreakerState"], None]
+type OnStateChange = Callable[[str, str, "CircuitBreakerState"], None]
+"""Called with ``(provider_name, model_id, new_state)`` after each persisted transition."""
 
 
 class CircuitBreaker:
@@ -76,7 +76,7 @@ class CircuitBreaker:
             raise ValueError(f"open_duration_s must be > 0, got {open_duration_s}")
         self._repo = repo
         self._monitor = monitor
-        self._threshold = failure_rate_threshold
+        self._failure_rate_threshold = failure_rate_threshold
         self._min_requests = min_requests
         self._open_duration = timedelta(seconds=open_duration_s)
         self._on_state_change = on_state_change
@@ -108,7 +108,7 @@ class CircuitBreaker:
                 )
                 return True
             return False
-        # HALF_OPEN — allow the probe; the next record_success / record_failure
+        # HALF_OPEN: allow the probe; the next record_success / record_failure
         # call decides the next state.
         return True
 
@@ -119,9 +119,10 @@ class CircuitBreaker:
         *,
         now: datetime | None = None,
     ) -> None:
+        """Count a success; a successful ``HALF_OPEN`` probe closes the circuit."""
         when = now or datetime.now(UTC)
         self._monitor.record_success(provider_name, model_id)
-        state = await self._current_state(provider_name, model_id)
+        state = await self.current_state(provider_name, model_id)
         if state is CircuitBreakerState.HALF_OPEN:
             await self._transition_to(
                 provider_name, model_id, CircuitBreakerState.CLOSED, when=when
@@ -135,9 +136,10 @@ class CircuitBreaker:
         *,
         now: datetime | None = None,
     ) -> None:
+        """Count a transient failure; open the circuit if the failure rate or a probe says so."""
         when = now or datetime.now(UTC)
         self._monitor.record_failure(provider_name, model_id)
-        state = await self._current_state(provider_name, model_id)
+        state = await self.current_state(provider_name, model_id)
         # Both paths transition to OPEN: a failed HALF_OPEN probe (we re-open
         # immediately) or a CLOSED endpoint whose failure rate just crossed
         # the threshold.
@@ -146,7 +148,7 @@ class CircuitBreaker:
             and self._monitor.should_open(
                 provider_name,
                 model_id,
-                threshold=self._threshold,
+                threshold=self._failure_rate_threshold,
                 min_requests=self._min_requests,
             )
         )
@@ -154,9 +156,7 @@ class CircuitBreaker:
             await self._transition_to(provider_name, model_id, CircuitBreakerState.OPEN, when=when)
 
     async def current_state(self, provider_name: str, model_id: str) -> CircuitBreakerState:
-        return await self._current_state(provider_name, model_id)
-
-    async def _current_state(self, provider_name: str, model_id: str) -> CircuitBreakerState:
+        """Persisted state; an endpoint never seen before is ``CLOSED``."""
         record = await self._repo.get(provider_name, model_id)
         if record is None:
             return CircuitBreakerState.CLOSED

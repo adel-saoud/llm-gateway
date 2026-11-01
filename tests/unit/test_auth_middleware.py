@@ -57,7 +57,7 @@ def test_empty_bearer_token_returns_401(settings: Settings, tmp_path: Path) -> N
 
 
 def test_valid_token_passes_auth_reaches_404(settings: Settings, tmp_path: Path) -> None:
-    # No matching route is registered — auth lets the request through and the
+    # No matching route is registered: auth lets the request through and the
     # router responds 404 instead of 401, which proves the token was accepted.
     team = make_team(api_key="sk-valid")
     with gateway_client_factory(settings, tmp_path, team=team) as client:

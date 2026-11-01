@@ -1,14 +1,15 @@
-"""Team resolver — loads the YAML config and looks up teams by API key.
+"""Team resolver: loads the YAML config and looks up teams by API key.
 
 The resolver is read-only after construction. Live config updates replace the
 whole resolver atomically on ``app.state.team_resolver`` rather than mutating
-the in-memory map — that keeps lookups lock-free.
+the in-memory map: that keeps lookups lock-free.
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterable
 from pathlib import Path
+from secrets import compare_digest
 from typing import Any, cast
 
 import yaml
@@ -24,9 +25,9 @@ class TeamResolverError(Exception):
 class TeamResolver:
     """In-memory lookup of ``api_key → TeamConfig``.
 
-    Duplicates on ``team_id`` or ``api_key`` are rejected at construction time
-    — the failure mode where two teams share a key silently is a security smell
-    we want to fail loud on.
+    Duplicates on ``team_id`` or ``api_key`` are rejected at construction time:
+    two teams silently sharing a key is a security smell we want to fail loud
+    on.
     """
 
     def __init__(self, teams: Iterable[TeamConfig]) -> None:
@@ -50,17 +51,17 @@ class TeamResolver:
 
         Constant-time comparison avoids leaking key length / prefix via timing.
         """
-        from secrets import compare_digest
-
         for key, team in self._by_key.items():
             if compare_digest(key, api_key):
                 return team
         return None
 
     def get(self, team_id: str) -> TeamConfig | None:
+        """The team with this id, for admin updates (never for authentication)."""
         return self._by_id.get(team_id)
 
     def all_teams(self) -> tuple[TeamConfig, ...]:
+        """Every team, so an admin update can rebuild the resolver with one team replaced."""
         return tuple(self._by_id.values())
 
     @classmethod

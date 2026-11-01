@@ -4,45 +4,98 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+
+permissions:
+  contents: read
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  quality:
-    name: Lint · type-check · test
+  pre-commit:
+    name: Pre-commit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          enable-cache: true
-          cache-dependency-glob: uv.lock
+          persist-credentials: false
 
-      - name: Set up Python
-        run: uv python install 3.11
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          version: "0.13.5"
+          enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --all-extras
+        run: uv sync --locked
 
-      - name: Lint
-        run: uv run ruff check .
+      # The contract check runs below against the pinned producer tag on GitHub.
+      - name: Run hooks
+        env:
+          SKIP: sync-schemas
+        run: uv run pre-commit run --all-files --show-diff-on-failure
 
-      - name: Format check
-        run: uv run ruff format --check .
+      - name: Contract copies match the pinned producer release
+        run: uv run python scripts/sync_schemas.py --check --source url
 
-      - name: Type-check
-        run: uv run pyright
+  tests:
+    name: Tests (Python 3.14)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - name: Test (with coverage)
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          version: "0.13.5"
+          python-version: "3.14"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Test with coverage
         run: uv run pytest
 
       - name: Upload coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: coverage-xml
           path: coverage.xml
+
+  build:
+    name: Build and smoke-test the wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          version: "0.13.5"
+          python-version: "3.14"
+
+      - name: Build sdist and wheel
+        run: uv build
+
+      - name: Install the wheel in a clean venv
+        run: |
+          uv venv --python 3.14 "$RUNNER_TEMP/smoke"
+          VIRTUAL_ENV="$RUNNER_TEMP/smoke" uv pip install dist/*.whl
+
+      # Redis connects lazily and Ollama is only called per request, so the
+      # app starts and answers /health without either.
+      - name: Start the app and call /health
+        env:
+          GATEWAY_TEAMS_YAML: ${{ github.workspace }}/config/teams.example.yaml
+          GATEWAY_DB_PATH: ${{ runner.temp }}/smoke.db
+        working-directory: ${{ runner.temp }}
+        run: |
+          "$RUNNER_TEMP/smoke/bin/uvicorn" llm_gateway.main:app --port 8000 &
+          for _ in $(seq 1 20); do
+            curl -fsS http://localhost:8000/health && exit 0
+            sleep 1
+          done
+          exit 1

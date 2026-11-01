@@ -15,7 +15,6 @@ build/
 dist/
 tests/
 docs/
-demo.gif
 .env
 .env.local
 ollama_data/
