@@ -1,0 +1,29 @@
+# Adds llm-cost-autopilot as a routing sidecar and switches the gateway's
+# model="auto" requests to it.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.autopilot.yml up -d --build
+#
+# Expects the llm-cost-autopilot repository checked out next to this one
+# (../llm-cost-autopilot). Its image serves POST /v2/route and GET /health on
+# container port 8000, published here on host port 8100 because the gateway
+# already uses 8000. Set AUTOPILOT_API_TOKEN in the environment to require a
+# Bearer token; the gateway sends the same value.
+services:
+  autopilot:
+    build:
+      context: ../llm-cost-autopilot
+    container_name: gateway-autopilot
+    restart: unless-stopped
+    environment:
+      AUTOPILOT_API_TOKEN: ${AUTOPILOT_API_TOKEN:-}
+    ports:
+      - "8100:8000"
+
+  gateway:
+    depends_on:
+      autopilot:
+        condition: service_healthy
+    environment:
+      GATEWAY_ROUTING_POLICY: autopilot
+      GATEWAY_AUTOPILOT_BASE_URL: http://autopilot:8000
+      GATEWAY_AUTOPILOT_API_TOKEN: ${AUTOPILOT_API_TOKEN:-}
