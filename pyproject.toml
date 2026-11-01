@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "llm-gateway"
-version = "0.1.0"
+version = "0.2.0"
 description = "Open-source LLM gateway with RAG-aware cost attribution: runs fully locally with Ollama."
 readme = "README.md"
 license = "MIT"
