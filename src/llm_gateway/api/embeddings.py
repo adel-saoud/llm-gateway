@@ -1,8 +1,9 @@
-"""``POST /v1/embeddings`` — OpenAI-compatible single-input embeddings.
+"""``POST /v1/embeddings``: OpenAI-compatible single-input embeddings.
 
 Embedding requests are always tagged as :data:`RagOperationType.RETRIEVAL` by
 the classifier (the embedding-model signal wins), so the per-operation cost
-breakdown attributes them to retrieval.
+breakdown attributes them to retrieval. Each upstream call emits one OTel
+GenAI ``embeddings`` span; embedding input is never recorded on it.
 """
 
 from __future__ import annotations
@@ -10,7 +11,6 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING, cast
 
-import structlog
 from fastapi import APIRouter, HTTPException, Request, Response
 
 from llm_gateway.api.schemas import (
@@ -19,12 +19,15 @@ from llm_gateway.api.schemas import (
     EmbeddingsResponse,
     EmbeddingsUsage,
 )
+from llm_gateway.observability.tracing import GenAiOperationName, start_genai_span
 from llm_gateway.providers.base import ProviderError
 from llm_gateway.providers.router import AllProvidersUnavailableError, RouteCandidate
 from llm_gateway.rag.models import RagOperationType
 from llm_gateway.rag.tagger import X_RAG_OPERATION_HEADER, classify
 
 if TYPE_CHECKING:
+    from opentelemetry.trace import Tracer
+
     from llm_gateway.auth.models import TeamConfig
     from llm_gateway.budget.enforcer import BudgetEnforcer
     from llm_gateway.budget.tracker import BudgetTracker
@@ -32,8 +35,6 @@ if TYPE_CHECKING:
     from llm_gateway.providers.base import Provider
     from llm_gateway.providers.registry import ProviderRegistry
     from llm_gateway.providers.router import ProviderRouter
-
-_log = structlog.get_logger(__name__)
 
 router = APIRouter(tags=["embeddings"])
 
@@ -44,16 +45,18 @@ async def embeddings(
     request: Request,
     response: Response,
 ) -> Response:
+    """OpenAI-compatible embedding of one string, tagged ``retrieval`` by default."""
     team: TeamConfig = request.state.team
     state = request.app.state
     registry: ProviderRegistry = state.registry
     enforcer: BudgetEnforcer = state.budget_enforcer
     tracker: BudgetTracker = state.budget_tracker
     metrics: Metrics = state.metrics
-    provider: Provider = state.ollama
+    provider: Provider = state.provider
     provider_router: ProviderRouter = state.provider_router
+    tracer: Tracer = state.tracer
 
-    if not team.is_model_allowed(body.model):
+    if not team.is_model_allowed(body.model, registry.tier_of(body.model)):
         raise HTTPException(
             status_code=403,
             detail=f"team '{team.team_id}' is not allowed to use model '{body.model}'",
@@ -86,8 +89,19 @@ async def embeddings(
     chain = [RouteCandidate(provider=provider, model_id=body.model)]
     request_id = str(uuid.uuid4())
 
+    genai_span = start_genai_span(
+        tracer,
+        operation=GenAiOperationName.EMBEDDINGS,
+        provider_name=provider.name,
+        request_model=body.model,
+        request_headers=request.headers,
+    )
     try:
-        result = await provider_router.embed(chain, body.input)
+        with genai_span:
+            result = await provider_router.embed(chain, body.input)
+            genai_span.record_embeddings_response(
+                response_model=result.model, input_tokens=result.usage.prompt_tokens
+            )
     except AllProvidersUnavailableError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except ProviderError as exc:

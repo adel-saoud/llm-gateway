@@ -17,8 +17,8 @@ def test_models_lists_registry_entries(settings: Settings, tmp_path: Path) -> No
     body = response.json()
     assert body["object"] == "list"
     ids = {m["id"] for m in body["data"]}
-    assert ids == {"llama3.2:3b", "qwen2.5:0.5b", "nomic-embed-text"}
-    embed = next(m for m in body["data"] if m["id"] == "nomic-embed-text")
+    assert ids == {"qwen3.5:4b", "qwen3.5:0.8b", "qwen3-embedding:0.6b"}
+    embed = next(m for m in body["data"] if m["id"] == "qwen3-embedding:0.6b")
     assert embed["is_embedding_model"] is True
     assert embed["tier"] == "embeddings"
 

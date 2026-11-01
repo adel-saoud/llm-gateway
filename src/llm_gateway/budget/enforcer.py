@@ -1,7 +1,7 @@
-"""Budget enforcer — warn at 80% of daily cap, block at 100%.
+"""Budget enforcer: warn at 80% of daily cap, block at 100%.
 
 Called by the chat / embedding handlers *before* the LLM is invoked. The
-enforcer is read-only (it queries the tracker for today's total) — the
+enforcer is read-only (it queries the tracker for today's total): the
 tracker writes to the ledger after the call succeeds.
 
 Every decision is logged with ``structlog`` so the budget audit trail is
@@ -22,7 +22,9 @@ from llm_gateway.budget.tracker import BudgetTracker
 _log = structlog.get_logger(__name__)
 
 WARN_THRESHOLD: Final[float] = 0.80
+"""Utilisation from which decisions report ``WARNING``, leaving room to react before the block."""
 BLOCK_THRESHOLD: Final[float] = 1.00
+"""Utilisation from which requests are refused with 429."""
 
 
 class BudgetStatus(StrEnum):
@@ -44,18 +46,21 @@ class BudgetDecision:
 
     @property
     def allowed(self) -> bool:
+        """False only when blocked: a warning still lets the request through."""
         return self.status is not BudgetStatus.BLOCKED
 
 
 class BudgetEnforcer:
+    """Pre-call gate comparing a team's spend today with its daily cap."""
+
     def __init__(self, tracker: BudgetTracker) -> None:
         self._tracker = tracker
 
     async def check(self, team: TeamConfig) -> BudgetDecision:
         """Read today's spend and classify it against the team's daily cap."""
         today = await self._tracker.total_for_today(team.team_id)
-        cap = team.budget.daily_usd
-        utilisation = today / cap if cap > 0.0 else 0.0
+        cap = team.budget.daily_usd  # BudgetConfig guarantees cap > 0
+        utilisation = today / cap
 
         if utilisation >= BLOCK_THRESHOLD:
             status = BudgetStatus.BLOCKED

@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
+
+from fastapi import FastAPI
 
 from llm_gateway.auth.models import TeamConfig
+from llm_gateway.auth.resolver import TeamResolver
 from llm_gateway.config import Settings
 from tests.conftest import gateway_client_factory, make_team
 
@@ -50,11 +54,11 @@ def test_admin_can_update_allowed_models(settings: Settings, tmp_path: Path) -> 
         response = client.put(
             "/v1/admin/teams/user",
             headers=ADMIN_AUTH,
-            json={"allowed_models": ["qwen2.5:0.5b"]},
+            json={"allowed_models": ["qwen3.5:0.8b"]},
         )
     assert response.status_code == 200
     body = response.json()
-    assert body["allowed_models"] == ["qwen2.5:0.5b"]
+    assert body["allowed_models"] == ["qwen3.5:0.8b"]
 
 
 def test_non_admin_is_forbidden(settings: Settings, tmp_path: Path) -> None:
@@ -98,9 +102,28 @@ def test_admin_update_takes_effect_on_subsequent_resolves(
             headers=ADMIN_AUTH,
             json={"budget": {"daily_usd": 250.0}},
         )
-        # Subsequent admin GET (via existing endpoint) — we don't have GET /v1/admin/teams
+        # Subsequent admin GET (via existing endpoint): we don't have GET /v1/admin/teams
         # but the next request from sk-user should see the new budget via /v1/stats
         response = client.get("/v1/stats", headers=USER_AUTH)
     assert response.status_code == 200
     body = response.json()
     assert body["daily_cap_usd"] == 250.0
+
+
+def test_partial_update_keeps_fields_it_does_not_mention(
+    settings: Settings, tmp_path: Path
+) -> None:
+    teams = [
+        make_team(team_id="admin", api_key="sk-admin", is_admin=True),
+        make_team(team_id="user", api_key="sk-user", semantic_cache=True),
+    ]
+    with gateway_client_factory(settings, tmp_path, teams=teams) as client:
+        response = client.put(
+            "/v1/admin/teams/user", headers=ADMIN_AUTH, json={"budget": {"daily_usd": 5.0}}
+        )
+        assert response.status_code == 200
+        resolver: TeamResolver = cast(FastAPI, client.app).state.team_resolver
+    updated = resolver.get("user")
+    assert updated is not None
+    assert updated.semantic_cache is True
+    assert updated.api_key.get_secret_value() == "sk-user"

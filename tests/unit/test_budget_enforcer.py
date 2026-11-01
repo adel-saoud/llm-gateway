@@ -17,7 +17,7 @@ def _team(daily_cap_usd: float = 10.0) -> TeamConfig:
     return TeamConfig(
         team_id="t1",
         api_key=SecretStr("sk"),
-        allowed_models=("llama3.2:3b",),
+        allowed_models=("qwen3.5:4b",),
         rate_limits=RateLimitConfig(requests_per_minute=60, burst_capacity=10),
         budget=BudgetConfig(daily_usd=daily_cap_usd),
     )
@@ -34,28 +34,28 @@ async def bundle(tmp_path: Path) -> _Bundle:
     ledger = CostLedger(tmp_path / "budget.db")
     await ledger.initialize()
     registry = default_registry(
-        high_quality_model="llama3.2:3b",
-        budget_model="qwen2.5:0.5b",
-        embedding_model="nomic-embed-text",
+        high_quality_model="qwen3.5:4b",
+        budget_model="qwen3.5:0.8b",
+        embedding_model="qwen3-embedding:0.6b",
     )
     tracker = BudgetTracker(ledger, registry)
     return _Bundle(tracker=tracker, enforcer=BudgetEnforcer(tracker))
 
 
 async def _spend(bundle: _Bundle, usd: float) -> None:
-    """Helper — record a synthetic event with a known cost via the unknown-model path."""
+    """Helper: record a synthetic event with a known cost via the unknown-model path."""
     # We bypass the registry by patching cost in-place via direct ledger insert.
     from datetime import UTC, datetime
 
     from llm_gateway.storage.db import CostLedgerEntry
 
-    # Access ledger via tracker internals — single-purpose test helper.
+    # Access ledger via tracker internals: single-purpose test helper.
     ledger: CostLedger = bundle.tracker._ledger  # pyright: ignore[reportPrivateUsage]
     await ledger.record(
         CostLedgerEntry(
             ts=datetime.now(UTC),
             team_id="t1",
-            model_id="llama3.2:3b",
+            model_id="qwen3.5:4b",
             operation_type="generation",
             input_tokens=0,
             output_tokens=0,

@@ -1,4 +1,4 @@
-"""``GET /metrics`` — Prometheus scrape endpoint.
+"""``GET /metrics``: Prometheus scrape endpoint.
 
 Returns the current state of the gateway's metrics registry in the standard
 text exposition format. Stays unauthenticated by intent: Prometheus pulls this
@@ -8,13 +8,15 @@ on an interval and shouldn't need credentials.
 from __future__ import annotations
 
 from fastapi import APIRouter, Request, Response
+from prometheus_client import CONTENT_TYPE_LATEST
 
-from llm_gateway.observability.metrics import METRICS_CONTENT_TYPE, Metrics
+from llm_gateway.observability.metrics import Metrics
 
 router = APIRouter(tags=["observability"])
 
 
 @router.get("/metrics")
 async def metrics(request: Request) -> Response:
+    """Prometheus text exposition of the app's own collector registry."""
     collector: Metrics = request.app.state.metrics
-    return Response(content=collector.render(), media_type=METRICS_CONTENT_TYPE)
+    return Response(content=collector.render(), media_type=CONTENT_TYPE_LATEST)

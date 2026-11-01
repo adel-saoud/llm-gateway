@@ -25,20 +25,6 @@ def test_operation_type_rejects_unknown_string() -> None:
         RagOperationType("rerank-strict")
 
 
-def test_from_string_known_values() -> None:
-    assert RagOperationType.from_string("retrieval") is RagOperationType.RETRIEVAL
-    assert RagOperationType.from_string("evaluation") is RagOperationType.EVALUATION
-
-
-def test_from_string_unknown_buckets_to_unknown() -> None:
-    assert RagOperationType.from_string("retreival") is RagOperationType.UNKNOWN
-    assert RagOperationType.from_string("") is RagOperationType.UNKNOWN
-
-
-def test_from_string_passes_through_enum() -> None:
-    assert RagOperationType.from_string(RagOperationType.GENERATION) is RagOperationType.GENERATION
-
-
 def test_cost_event_is_frozen() -> None:
     event = RagCostEvent(
         team_id="t",

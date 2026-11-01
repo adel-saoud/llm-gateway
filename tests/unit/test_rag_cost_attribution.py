@@ -17,7 +17,7 @@ async def _record(
         CostLedgerEntry(
             ts=ts,
             team_id=team_id,
-            model_id="llama3.2:3b",
+            model_id="qwen3.5:4b",
             operation_type=op.value,
             input_tokens=0,
             output_tokens=0,
