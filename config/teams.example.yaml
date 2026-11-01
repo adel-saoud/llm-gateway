@@ -1,19 +1,23 @@
-# Team configuration — copy to config/teams.yaml and replace the API keys.
+# Team configuration: copy to config/teams.yaml and replace the API keys.
 #
 # Each team represents an independent caller (a product squad, a pipeline, a
 # service account). The gateway enforces isolation: each team gets its own
 # rate-limit bucket, daily spend cap, and model whitelist.
 #
 # Fields:
-#   team_id        — stable identifier logged on every request and metric label
-#   api_key        — Bearer token the caller passes in the Authorization header
-#   allowed_models — model whitelist (empty list = no restriction)
-#   rate_limits    — Redis token-bucket parameters
-#   budget         — daily USD cap; gateway warns at 80%, blocks at 100%
-#   is_admin       — if true, the team can call PUT /v1/admin/teams/{id}
+#   team_id        stable identifier logged on every request and metric label
+#   api_key        Bearer token the caller passes in the Authorization header
+#   allowed_models: tiers (high_quality, budget, embeddings) or model ids the team
+#                  may call; empty list = no restriction. Tiers follow the
+#                  GATEWAY_MODEL_* settings, so a model change needs no edit here.
+#   rate_limits    Redis token-bucket parameters
+#   budget         daily USD cap; gateway warns at 80%, blocks at 100%
+#   is_admin       if true, the team can call PUT /v1/admin/teams/{id}
+#   semantic_cache - if true, the team's chat requests may be served from the
+#                    cache (also needs GATEWAY_CACHE_ENABLED=true). Default false.
 
 teams:
-  # Product search team — runs a four-stage RAG pipeline powering the
+  # Product search team: runs a four-stage RAG pipeline powering the
   # e-commerce catalogue search: embed user query → retrieve relevant products
   # → rerank by relevance score → generate a natural-language summary.
   # Also runs nightly LLM-as-Judge evaluation to detect answer quality drift.
@@ -21,9 +25,9 @@ teams:
   - team_id: product-search
     api_key: sk-gw-prod-search-replace-me
     allowed_models:
-      - llama3.2:3b
-      - qwen2.5:0.5b
-      - nomic-embed-text
+      - high_quality
+      - budget
+      - embeddings
     rate_limits:
       requests_per_minute: 60
       burst_capacity: 100
@@ -31,14 +35,14 @@ teams:
       daily_usd: 25.0
     is_admin: true
 
-  # Customer support team — runs a two-stage RAG pipeline for the support bot:
+  # Customer support team: runs a two-stage RAG pipeline for the support bot:
   # embed the incoming ticket → retrieve matching KB articles → generate a draft
   # reply. Restricted to smaller models to keep per-ticket cost predictable.
   - team_id: customer-support
     api_key: sk-gw-cust-support-replace-me
     allowed_models:
-      - qwen2.5:0.5b
-      - nomic-embed-text
+      - budget
+      - embeddings
     rate_limits:
       requests_per_minute: 30
       burst_capacity: 50

@@ -1,6 +1,6 @@
 """State-machine and persistence tests for ``CircuitBreaker``.
 
-Time is injected via the ``now`` kwarg on every call — no ``asyncio.sleep`` and
+Time is injected via the ``now`` kwarg on every call: no ``asyncio.sleep`` and
 no flaky timing in the tests.
 """
 
@@ -103,12 +103,12 @@ async def test_open_transitions_to_half_open_after_duration(tmp_path: Path) -> N
         await s.breaker.record_failure("p", "m", now=opened_at)
     assert await s.breaker.current_state("p", "m") is CircuitBreakerState.OPEN
 
-    # 29s later — still OPEN
+    # 29s later: still OPEN
     too_soon = opened_at + timedelta(seconds=29)
     assert await s.breaker.is_allowed("p", "m", now=too_soon) is False
     assert await s.breaker.current_state("p", "m") is CircuitBreakerState.OPEN
 
-    # 30s+ later — HALF_OPEN, probe allowed
+    # 30s+ later: HALF_OPEN, probe allowed
     elapsed = opened_at + timedelta(seconds=31)
     assert await s.breaker.is_allowed("p", "m", now=elapsed) is True
     assert await s.breaker.current_state("p", "m") is CircuitBreakerState.HALF_OPEN
@@ -126,7 +126,7 @@ async def test_half_open_success_closes(tmp_path: Path) -> None:
     await s.breaker.is_allowed("p", "m", now=later)  # transitions to HALF_OPEN
     await s.breaker.record_success("p", "m", now=later)
     assert await s.breaker.current_state("p", "m") is CircuitBreakerState.CLOSED
-    # Monitor was reset — next is_allowed lets traffic through and the window
+    # Monitor was reset: next is_allowed lets traffic through and the window
     # has no failures recorded against the now-closed circuit.
     assert s.monitor.sample_count("p", "m") == 0
 
@@ -143,7 +143,7 @@ async def test_half_open_failure_reopens(tmp_path: Path) -> None:
     assert await s.breaker.current_state("p", "m") is CircuitBreakerState.OPEN
 
 
-# ── Persistence — survives restart ─────────────────────────────────────────
+# ── Persistence: survives restart ─────────────────────────────────────────
 
 
 async def test_state_persists_across_breaker_instances(tmp_path: Path) -> None:
@@ -163,7 +163,7 @@ async def test_state_persists_across_breaker_instances(tmp_path: Path) -> None:
         await cb1.record_failure("ollama", "x")
     assert await cb1.current_state("ollama", "x") is CircuitBreakerState.OPEN
 
-    # Simulate a process restart — fresh objects, same DB.
+    # Simulate a process restart: fresh objects, same DB.
     repo2 = CircuitStateRepository(db_path)
     cb2 = CircuitBreaker(
         repo2,

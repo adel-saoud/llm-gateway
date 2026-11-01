@@ -1,6 +1,6 @@
 """Pure ASGI middleware that resolves the caller's team from the Authorization header.
 
-Health, metrics, and OpenAPI paths are exempt — they're scraped by Prometheus
+Health, metrics, and OpenAPI paths are exempt: they're scraped by Prometheus
 and load balancers that don't carry credentials. Everything else requires
 ``Authorization: Bearer <api_key>`` and a matching team in the resolver.
 
@@ -13,7 +13,6 @@ and the resolved :class:`~llm_gateway.auth.models.TeamConfig` is attached to
 
 from __future__ import annotations
 
-from collections.abc import Iterable
 from typing import Final
 
 import structlog
@@ -25,7 +24,7 @@ from llm_gateway.auth.resolver import TeamResolver
 
 _log = structlog.get_logger(__name__)
 
-DEFAULT_PUBLIC_PATHS: Final[tuple[str, ...]] = (
+PUBLIC_PATHS: Final[tuple[str, ...]] = (
     "/health",
     "/health/ready",
     "/metrics",
@@ -33,42 +32,39 @@ DEFAULT_PUBLIC_PATHS: Final[tuple[str, ...]] = (
     "/redoc",
     "/openapi.json",
 )
+"""Paths (and their sub-paths) served without credentials, to auth and rate limiting alike."""
 
-_BEARER_HEADERS: Final[list[tuple[bytes, bytes]]] = [(b"www-authenticate", b"Bearer")]
+_WWW_AUTHENTICATE_BEARER: Final[list[tuple[bytes, bytes]]] = [(b"www-authenticate", b"Bearer")]
+"""RFC 9110 requires a 401 to name the expected scheme."""
 
 
 class AuthMiddleware:
     """Validate the caller's API key and attach the team to request state."""
 
-    def __init__(
-        self,
-        app: ASGIApp,
-        *,
-        public_paths: Iterable[str] = DEFAULT_PUBLIC_PATHS,
-    ) -> None:
+    def __init__(self, app: ASGIApp) -> None:
         self._app = app
-        self._public_paths = tuple(public_paths)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        """Pass public paths through; answer 401 unless the Bearer key resolves to a team."""
         if scope["type"] != "http":
             await self._app(scope, receive, send)
             return
 
         request = Request(scope, receive)
-        if self._is_public(request.url.path):
+        if is_public_path(request.url.path):
             await self._app(scope, receive, send)
             return
 
         resolver: TeamResolver | None = getattr(request.app.state, "team_resolver", None)
         if resolver is None:
-            # Misconfiguration — lifespan should always populate this. Fail
+            # Misconfiguration: lifespan should always populate this. Fail
             # closed so we never serve protected routes without auth.
             _log.error("auth_no_resolver_configured")
             await send_json_response(
                 send,
                 status=401,
                 body={"error": "auth_unavailable"},
-                extra_headers=_BEARER_HEADERS,
+                extra_headers=_WWW_AUTHENTICATE_BEARER,
             )
             return
 
@@ -78,7 +74,7 @@ class AuthMiddleware:
                 send,
                 status=401,
                 body={"error": "missing_credentials"},
-                extra_headers=_BEARER_HEADERS,
+                extra_headers=_WWW_AUTHENTICATE_BEARER,
             )
             return
 
@@ -89,18 +85,21 @@ class AuthMiddleware:
                 send,
                 status=401,
                 body={"error": "invalid_credentials"},
-                extra_headers=_BEARER_HEADERS,
+                extra_headers=_WWW_AUTHENTICATE_BEARER,
             )
             return
 
         request.state.team = team
         await self._app(scope, receive, send)
 
-    def _is_public(self, path: str) -> bool:
-        return any(path == p or path.startswith(f"{p}/") for p in self._public_paths)
+
+def is_public_path(path: str) -> bool:
+    """True for a :data:`PUBLIC_PATHS` entry or anything below it."""
+    return any(path == public or path.startswith(f"{public}/") for public in PUBLIC_PATHS)
 
 
 def _extract_bearer_token(header_value: str | None) -> str | None:
+    """The token of an ``Authorization: Bearer <token>`` header (scheme case-insensitive)."""
     if header_value is None:
         return None
     parts = header_value.split(maxsplit=1)

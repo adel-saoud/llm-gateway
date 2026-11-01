@@ -24,7 +24,7 @@ async def send_json_response(
     """Send a JSON response over the raw ASGI ``send`` channel.
 
     Equivalent to constructing a :class:`starlette.responses.JSONResponse` and
-    awaiting it, but without the indirection — used in error paths that don't
+    awaiting it, but without the indirection: used in error paths that don't
     have a Starlette ``Request`` instance handy.
     """
     payload = json.dumps(body).encode("utf-8")

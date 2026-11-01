@@ -1,4 +1,4 @@
-# Example override — copy to docker-compose.override.yml to use your host's
+# Example override: copy to docker-compose.override.yml to use your host's
 # Ollama instead of the containerised one.
 #
 #   cp docker-compose.override.yml.example docker-compose.override.yml

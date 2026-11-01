@@ -59,6 +59,7 @@ class _StreamingProvider:
         *,
         temperature: float = 0.0,
         max_tokens: int | None = None,
+        think: bool = False,
     ) -> AsyncIterator[StreamChunk]:
         self.stream_calls += 1
         for item in self._chunks:
@@ -130,7 +131,7 @@ async def test_streaming_falls_back_when_first_provider_fails_before_yielding(
 
 
 async def test_streaming_mid_stream_failure_does_not_fall_back(tmp_path: Path) -> None:
-    """A provider that yields then raises commits the router — no fallback."""
+    """A provider that yields then raises commits the router: no fallback."""
     breaker = await _build_breaker(tmp_path)
     router = ProviderRouter(breaker)
     mid_failing = _StreamingProvider(
@@ -154,7 +155,7 @@ async def test_streaming_mid_stream_failure_does_not_fall_back(tmp_path: Path) -
     with pytest.raises(ProviderUnavailableError, match="mid-stream"):
         await _drain()
     assert [c.delta for c in collected] == ["Hello"]
-    # Fallback was not tried — we were already committed.
+    # Fallback was not tried: we were already committed.
     assert fallback.stream_calls == 0
 
 

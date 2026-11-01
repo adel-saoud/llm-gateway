@@ -1,9 +1,10 @@
-"""Model registry — declarative inventory of routable models and their simulated costs.
+"""Model registry: declarative inventory of routable models and their simulated costs.
 
-Costs are intentionally synthetic — see ``context/decisions/004-simulated-costs.md``.
-The routing logic, the savings %, and the per-operation attribution are real; the
-dollar amounts are illustrative so the gateway can run free-tier on Ollama and still
-demonstrate the production behaviour an OpenAI / Anthropic deployment would exhibit.
+Costs are synthetic. The gateway runs on free local Ollama models, so the
+per-1k prices below only give the routing, the budget caps and the per-operation
+split something realistic to work with: a high-quality model about 30 to 75
+times dearer than a budget one, as with paid APIs. The token counts are real;
+the dollar amounts are illustrative.
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ from enum import StrEnum
 
 
 class ModelTier(StrEnum):
-    """Routing tier — drives the high-quality vs budget decision in the router."""
+    """Routing tier: drives the high-quality vs budget decision in the router."""
 
     HIGH_QUALITY = "high_quality"
     BUDGET = "budget"
@@ -27,7 +28,6 @@ class ModelConfig:
 
     model_id: str
     tier: ModelTier
-    provider_name: str
     cost_per_1k_input_usd: float
     cost_per_1k_output_usd: float
     is_embedding_model: bool = False
@@ -55,18 +55,27 @@ class ProviderRegistry:
         self._by_id: Mapping[str, ModelConfig] = by_id
 
     def get(self, model_id: str) -> ModelConfig:
+        """Config of ``model_id``; raises ``KeyError`` for a model not in the registry."""
         try:
             return self._by_id[model_id]
         except KeyError as exc:
             raise KeyError(f"unknown model: {model_id}") from exc
 
+    def tier_of(self, model_id: str) -> ModelTier | None:
+        """Tier ``model_id`` serves, or None for a model not in the registry."""
+        model = self._by_id.get(model_id)
+        return model.tier if model is not None else None
+
     def has(self, model_id: str) -> bool:
+        """True when ``model_id`` is routable."""
         return model_id in self._by_id
 
     def all(self) -> tuple[ModelConfig, ...]:
+        """Every model, in registration order (the ``/v1/models`` order)."""
         return tuple(self._by_id.values())
 
     def by_tier(self, tier: ModelTier) -> tuple[ModelConfig, ...]:
+        """Models of one tier, in registration order (the fallback order)."""
         return tuple(m for m in self._by_id.values() if m.tier == tier)
 
 
@@ -76,30 +85,24 @@ def default_registry(
     budget_model: str,
     embedding_model: str,
 ) -> ProviderRegistry:
-    """Build the registry matching the cost tiers in the brief.
-
-    See ``context/decisions/004-simulated-costs.md`` for the prices.
-    """
+    """One model per tier, with the simulated prices listed in ``docs/configuration.md``."""
     return ProviderRegistry(
         [
             ModelConfig(
                 model_id=high_quality_model,
                 tier=ModelTier.HIGH_QUALITY,
-                provider_name="ollama",
                 cost_per_1k_input_usd=0.003,
                 cost_per_1k_output_usd=0.015,
             ),
             ModelConfig(
                 model_id=budget_model,
                 tier=ModelTier.BUDGET,
-                provider_name="ollama",
                 cost_per_1k_input_usd=0.0001,
                 cost_per_1k_output_usd=0.0002,
             ),
             ModelConfig(
                 model_id=embedding_model,
                 tier=ModelTier.EMBEDDINGS,
-                provider_name="ollama",
                 cost_per_1k_input_usd=0.0001,
                 cost_per_1k_output_usd=0.0,
                 is_embedding_model=True,

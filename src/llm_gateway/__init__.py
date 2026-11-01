@@ -1,4 +1,4 @@
-"""LLM Gateway — RAG-aware cost attribution layer in front of local Ollama models."""
+"""LLM Gateway: RAG-aware cost attribution layer in front of local Ollama models."""
 
 from __future__ import annotations
 
